@@ -1,275 +1,61 @@
 require('./utils/utils');
-
-
-require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const cors = require('cors');
 const MongoStore = require('./database/mongoStoreConnection');
 const bcrypt = require('bcrypt');
+require('dotenv').config();
 const saltRounds = 12;
 
-
 const database = include('database/sqlConnection');
-const db_utils = include('database/dbQueries/db_utils'); 
 const db_users = include('database/dbQueries/userQuery');
-const success = db_utils.printMySQLVersion();
-
-const port = process.env.PORT || 3000;
 
 const app = express();
+const port = process.env.PORT || 3000;
 
-const expireTime =  1 * 60 * 60 * 1000 ; //expires after 1 hour  (hours * minutes * seconds * millis)
+app.use(express.json());
+app.use(cors({
+  origin: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+  credentials: true
+}));
 
+app.use(session({
+  secret: process.env.NODE_SESSION_SECRET,
+  store: MongoStore,
+  saveUninitialized: false,
+  resave: true,
+  cookie: {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    secure: process.env.NODE_ENV === 'production'
+  }
+}));
 
-/* secret information section */
-const mongodb_user = process.env.MONGODB_USER;
-const mongodb_password = process.env.MONGODB_PASSWORD;
-const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
-
-const node_session_secret = process.env.NODE_SESSION_SECRET;
-/* END secret section */
-
-app.use(express.urlencoded({extended: false}));
-
-app.use(session({ 
-    secret: node_session_secret,
-	store: MongoStore, //default is memory store 
-	saveUninitialized: false, 
-	resave: true
-}
-));
-
-app.get('/', (req,res) => {
-    res.render("index");
+app.post('/api/register', async (req, res) => {
+  const { username, password } = req.body;
+  const hashed = bcrypt.hashSync(password, saltRounds);
+  const success = await db_users.createUser({ user: username, hashedPassword: hashed });
+  if (!success) return res.status(500).json({ ok: false });
+  res.json({ ok: true });
 });
 
-app.get('/about', (req,res) => {
-    var color = req.query.color;
-    if (!color) {
-        color = "black";
-    }
-
-    res.render("about", {color: color} );
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  const user = await db_users.getUser({ user: username });
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ ok: false, error: 'invalid credentials' });
+  }
+  req.session.authenticated = true;
+  req.session.username = username;
+  res.json({ ok: true, username });
 });
 
-app.get('/contact', (req,res) => {
-    var missingEmail = req.query.missing;
-    res.render("contact", {missing: missingEmail});
+app.post('/api/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
 });
 
-app.post('/submitEmail', (req,res) => {
-    var email = req.body.email;
-    if (!email) {
-        res.redirect('/contact?missing=1');
-    }
-    else {
-        res.render("submitEmail", {email: email});
-    }
+app.get('/api/session', (req, res) => {
+  res.json({ authenticated: !!req.session.authenticated, user: req.session.username || null });
 });
 
-app.get('/createTables', async (req,res) => {
-
-    const create_tables = include('database/create_tables');
-
-    var success = create_tables.createTables();
-    if (success) {
-        res.render("successMessage", {message: "Created tables."} );
-    }
-    else {
-        res.render("errorMessage", {error: "Failed to create tables."} );
-    }
-});
-
-app.get('/createUser', (req,res) => {
-    res.render("createUser");
-});
-
-
-app.get('/login', (req,res) => {
-    res.render("login");
-});
-
-app.post('/submitUser', async (req,res) => {
-    var username = req.body.username;
-    var password = req.body.password;
-
-    var hashedPassword = bcrypt.hashSync(password, saltRounds);
-
-    var success = await db_users.createUser({ user: username, hashedPassword: hashedPassword });
-
-    if (success) {
-        var results = await db_users.getUsers();
-
-        res.render("submitUser",{users:results});
-    }
-    else {
-        res.render("errorMessage", {error: "Failed to create user."} );
-    }
-
-});
-app.post('/signout', (req, res) => {
-    // Destroy the session to log the user out
-    req.session.destroy((err) => {
-        if (err) {
-            console.error("Error destroying session:", err);
-            res.status(500).send("Could not sign out. Please try again.");
-        } else {
-            // Redirect to the home page or login page after signing out
-            res.redirect('/');
-        }
-    });
-});
-
-
-app.post('/loggingin', async (req,res) => {
-    var username = req.body.username;
-    var password = req.body.password;
-
-
-    var results = await db_users.getUser({ user: username, hashedPassword: password });
-
-    if (results) {
-        if (results.length == 1) { //there should only be 1 user in the db that matches
-            if (bcrypt.compareSync(password, results[0].password)) {
-                req.session.authenticated = true;
-                req.session.user_type = results[0].type; 
-                req.session.username = username;
-                req.session.cookie.maxAge = expireTime;
-        
-                res.redirect('/loggedIn');
-                return;
-            }
-            else {
-                console.log("invalid password");
-            }
-        }
-        else {
-            console.log('invalid number of users matched: '+results.length+" (expected 1).");
-            res.redirect('/');
-            return;            
-        }
-    }
-
-    console.log('user not found');
-    //user and password combination not found
-    res.redirect("/");
-});
-
-
-
-
-function isValidSession(req) {
-	if (req.session.authenticated) {
-		return true;
-	}
-	return false;
-}
-
-function sessionValidation(req, res, next) {
-	if (!isValidSession(req)) {
-		req.session.destroy();
-		res.redirect('/');
-		return;
-	}
-	else {
-		next();
-	}
-}
-
-function isAdmin(req) {
-    if (req.session.user_type == 'admin') {
-        return true;
-    }
-    return false;
-}
-
-function adminAuthorization(req, res, next) {
-	if (!isAdmin(req)) {
-        res.status(403);
-        res.render("errorMessage", {error: "Not Authorized"});
-        return;
-	}
-	else {
-		next();
-	}
-}
-
-app.use('/loggedin', sessionValidation);
-app.use('/loggedin/admin', adminAuthorization);
-
-app.get('/loggedin', (req,res) => {
-    res.render("loggedin");
-});
-
-app.get('/loggedin/info', (req,res) => {
-    res.render("loggedin-info");
-});
-
-app.get('/loggedin/admin', (req,res) => {
-    res.render("admin");
-});
-
-app.get('/loggedin/memberinfo', (req,res) => {
-    res.render("memberInfo", {username: req.session.username, user_type: req.session.user_type});
-});
-
-
-app.get('/rilla/:id', (req,res) => {
-    var rilla = req.params.id;
-
-    res.render("rilla", {rilla: rilla});
-});
-
-
-app.get('/api', (req,res) => {
-	var user = req.session.user;
-    var user_type = req.session.user_type;
-	console.log("api hit ");
-
-	var jsonResponse = {
-		success: false,
-		data: null,
-		date: new Date()
-	};
-
-	
-	if (!isValidSession(req)) {
-		jsonResponse.success = false;
-		res.status(401);  //401 == bad user
-		res.json(jsonResponse);
-		return;
-	}
-
-	if (typeof id === 'undefined') {
-		jsonResponse.success = true;
-		if (user_type === "admin") {
-			jsonResponse.data = ["A","B","C","D"];
-		}
-		else {
-			jsonResponse.data = ["A","B"];
-		}
-	}
-	else {
-		if (!isAdmin(req)) {
-			jsonResponse.success = false;
-			res.status(403);  //403 == good user, but, user should not have access
-			res.json(jsonResponse);
-			return;
-		}
-		jsonResponse.success = true;
-		jsonResponse.data = [id + " - details"];
-	}
-
-	res.json(jsonResponse);
-
-});
-
-app.use(express.static(__dirname + "/public"));
-
-app.use((req, res) => {
-    res.status(404).render("404");
-  });
-
-app.listen(port, () => {
-	console.log("Node application listening on port "+port);
-}); 
+app.listen(port, () => console.log(`API running on port ${port}`));
