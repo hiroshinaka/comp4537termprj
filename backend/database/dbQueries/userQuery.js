@@ -1,57 +1,104 @@
-let createUser = async (pool, username, password, role_id = 2) => {
-  const [result] = await pool.query(
-      'INSERT INTO user (username, password_hash, role_id) VALUES (?, ?, ?)',
-      [username, password, role_id]
-  );
+// backend/database/dbQueries/userQuery.js
+const db = require('../sqlConnection'); // mysql2/promise pool
 
-  const insertId = result.insertId;
-  const [rows] = await pool.query(
-      'SELECT id, username, role_id FROM user WHERE id = ?',
-      [insertId]
-  );
+const USERS = 'users';
+const LLM = 'llm_interactions';
 
-  if (!rows.length) {
-      throw new Error('Failed to retrieve created user');
+/** Create a user */
+async function createUser({ user, hashedPassword, email = null, role = 'user' }) {
+  try {
+    const [result] = await db.query(
+      `INSERT INTO ${USERS} (username, password_hash, email, role, is_active)
+       VALUES (?, ?, ?, ?, TRUE)`,
+      [user, hashedPassword, email, role]
+    );
+    const id = result.insertId;
+
+    const [rows] = await db.query(
+      `SELECT 
+         user_id AS id,
+         username,
+         password_hash AS password,  -- alias for server bcrypt.compare
+         role AS type,
+         email,
+         is_active
+       FROM ${USERS}
+       WHERE user_id = ?`,
+      [id]
+    );
+    return rows[0] || null;
+  } catch (err) {
+    console.error('createUser error:', err.code || err.message);
+    return false;
   }
+}
 
-  return rows[0];
+/** List users (for your /submitUser page) */
+async function getUsers() {
+  const [rows] = await db.query(
+    `SELECT user_id AS id, username, role AS type, email, is_active
+     FROM ${USERS}
+     ORDER BY user_id`
+  );
+  return rows;
+}
+
+/** Get one user by username (for login) */
+async function getUser({ user }) {
+  const [rows] = await db.query(
+    `SELECT 
+       user_id AS id,
+       username,
+       password_hash AS password,  -- server expects .password
+       role AS type,               -- server expects .type
+       is_active
+     FROM ${USERS}
+     WHERE username = ?
+     LIMIT 1`,
+    [user]
+  );
+  return rows[0] || null;
+}
+
+/** Optional: deactivate user */
+async function deactivateUser(id) {
+  const [res] = await db.query(
+    `UPDATE ${USERS} SET is_active = FALSE WHERE user_id = ?`,
+    [id]
+  );
+  return res.affectedRows === 1;
+}
+
+/** ---- LLM interaction helpers (matches llm_interactions) ---- */
+
+/** Log an LLM interaction */
+async function logLlmInteraction({ user_id, user_input, llm_output }) {
+  const [res] = await db.query(
+    `INSERT INTO ${LLM} (user_id, user_input, llm_output)
+     VALUES (?, ?, ?)`,
+    [user_id, user_input, llm_output]
+  );
+  return res.insertId;
+}
+
+/** Get a user's recent interactions */
+async function getLlmInteractionsByUser(user_id, limit = 50) {
+  const [rows] = await db.query(
+    `SELECT interaction_id, user_id, user_input, llm_output, created_at
+     FROM ${LLM}
+     WHERE user_id = ?
+     ORDER BY interaction_id DESC
+     LIMIT ?`,
+    [user_id, Number(limit)]
+  );
+  return rows;
+}
+
+module.exports = {
+  createUser,
+  getUsers,
+  getUser,
+  deactivateUser,
+  logLlmInteraction,
+  getLlmInteractionsByUser,
 };
-
-let getUserByUsername = async(pool, username) => {
-  const [rows] = await pool.query(
-      'SELECT id, username FROM user WHERE username = ?',
-      [username]
-  );
-
-  if (!rows.length) {
-      return null;
-  }
-
-  return rows[0];
-}
-
-let getUserWithPassword = async (pool, username) => {
-  const [rows] = await pool.query(
-      'SELECT id, username, password_hash, role_id FROM user WHERE username = ?',
-      [username]
-  );
-
-  if (!rows.length) {
-      return null;
-  }
-
-  return rows[0];
-}
-
-let updateUserImage = async (pool, userId, imageUrl) => {
-  const [result] = await pool.query(
-      'UPDATE user SET image_url = ? WHERE id = ?',
-      [imageUrl, userId]
-  );
-
-  const [rows] = await pool.query('SELECT id, username, role_id, image_url FROM user WHERE id = ?', [userId]);
-  if (!rows.length) return null;
-  return rows[0];
-}
-
-module.exports = { createUser, getUserByUsername, getUserWithPassword, updateUserImage };
