@@ -29,8 +29,6 @@ const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
 /* END secret section */
 
-app.set('view engine', 'ejs');
-
 app.use(express.urlencoded({extended: false}));
 
 app.use(session({ 
