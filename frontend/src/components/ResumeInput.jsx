@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 
-// Minimal chat-like UI where users paste resume text and a job description.
-// No routing or backend; emits data via onAnalyze.
-// Usage: <ResumeChat onAnalyze={({ resume, job }) => {}} onLogout={() => {}} />
-export default function ResumeChat({ onAnalyze, onLogout }) {
+export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
   const [error, setError] = useState('');
@@ -19,7 +16,6 @@ export default function ResumeChat({ onAnalyze, onLogout }) {
     if (typeof onAnalyze === 'function') {
       onAnalyze(payload);
     } else {
-      // eslint-disable-next-line no-console
       console.log('Analyze requested:', payload);
     }
   };
@@ -50,7 +46,6 @@ export default function ResumeChat({ onAnalyze, onLogout }) {
             </div>
           </div>
 
-          {/* Stack inputs vertically */}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4">
             <div className="flex flex-col">
               <label htmlFor="resume" className="text-sm font-medium text-gray-700 mb-1">Your Resume</label>
@@ -91,3 +86,4 @@ export default function ResumeChat({ onAnalyze, onLogout }) {
     </div>
   );
 }
+

@@ -1,16 +1,31 @@
 import React, { useState } from 'react';
 
-export default function Login({ onLogin }) {
+export default function Login({ onLogin, onSwitchToSignup }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const creds = { username, password };
-    if (typeof onLogin === 'function') {
-      onLogin(creds);
-    } else {
-      console.log('Login submitted:', creds);
+    setMessage('');
+    const body = new URLSearchParams({ username, password }).toString();
+    try {
+      const res = await fetch('/loggingin', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (typeof onLogin === 'function') onLogin({ username });
+      } else {
+        setMessage(data.error || 'Invalid username or password.');
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Login error:', err);
+      setMessage('Login failed. Please try again.');
     }
   };
 
@@ -57,6 +72,19 @@ export default function Login({ onLogin }) {
             Login
           </button>
         </form>
+        {message && (
+          <p className="mt-3 text-sm text-red-600 text-center">{message}</p>
+        )}
+        <div className="flex items-center justify-between mt-8">
+          <span className="text-sm text-slate-500">Don’t have an account?</span>
+          <button
+            type="button"
+            onClick={() => onSwitchToSignup && onSwitchToSignup()}
+            className="text-sm font-medium text-slate-900 hover:underline"
+          >
+            Sign up
+          </button>
+        </div>
       </div>
     </div>
   );

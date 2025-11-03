@@ -1,20 +1,47 @@
 import React, { useState } from 'react';
 
-// Minimal Tailwind-based signup form with no routing, auth hooks, or direct fetch.
-// Usage: <Signup onSignup={(creds) => {/* handle { username, password } */}} />
-export default function Signup({ onSignup }) {
+export default function Signup({ onSignup, onSwitchToLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const creds = { username, password };
-    if (typeof onSignup === 'function') {
-      onSignup(creds);
-    } else {
-      // Fallback: log to console so this component works standalone
+    setMessage('');
+    try {
+      // Create user via backend form handler
+      const createBody = new URLSearchParams({ username, password }).toString();
+      const createRes = await fetch('/submitUser', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: createBody,
+      });
+
+      if (!createRes.ok) {
+        setMessage('Signup failed. Please try a different username.');
+        return;
+      }
+
+      // Attempt auto-login to establish session
+      const loginBody = new URLSearchParams({ username, password }).toString();
+      const loginRes = await fetch('/loggingin', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: loginBody,
+      });
+
+      const success = loginRes.redirected && /\/loggedin/i.test(loginRes.url);
+      if (success) {
+        if (typeof onSignup === 'function') onSignup({ username });
+      } else {
+        setMessage('Signed up, but auto-login failed. Please log in.');
+      }
+    } catch (err) {
       // eslint-disable-next-line no-console
-      console.log('Signup submitted:', creds);
+      console.error('Signup error:', err);
+      setMessage('Signup failed. Please try again later.');
     }
   };
 
@@ -61,6 +88,19 @@ export default function Signup({ onSignup }) {
             Sign Up
           </button>
         </form>
+        {message && (
+          <p className="mt-3 text-sm text-red-600 text-center">{message}</p>
+        )}
+        <div className="flex items-center justify-between mt-8">
+          <span className="text-sm text-slate-500">Already have an account?</span>
+          <button
+            type="button"
+            onClick={() => onSwitchToLogin && onSwitchToLogin()}
+            className="text-sm font-medium text-slate-900 hover:underline"
+          >
+            Log in
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,20 +1,33 @@
 import './App.css';
 import { useState } from 'react';
-import SimpleLogin from './components/SimpleLogin';
-import ResumeChat from './components/ResumeChat';
+import Login from './components/Login';
+import Signup from './components/Signup';
+import ResumeInput from './components/ResumeInput';
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
+  const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
 
   if (!loggedIn) {
-    return <SimpleLogin onLogin={() => setLoggedIn(true)} />;
+    if (authView === 'signup') {
+      return (
+        <Signup
+          onSignup={() => setLoggedIn(true)}
+          onSwitchToLogin={() => setAuthView('login')}
+        />
+      );
+    }
+    return (
+      <Login
+        onLogin={() => setLoggedIn(true)}
+        onSwitchToSignup={() => setAuthView('signup')}
+      />
+    );
   }
 
   return (
-    <ResumeChat
+    <ResumeInput
       onAnalyze={({ resume, job }) => {
-        // Replace with backend call if needed
-        // eslint-disable-next-line no-console
         console.log('Analyze payload:', { resume, job });
       }}
       onLogout={() => setLoggedIn(false)}
