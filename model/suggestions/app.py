@@ -1,10 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict
 import os, requests
 
-HF_API_URL = os.getenv("HF_API_URL", "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.3")
-HF_API_KEY = os.getenv("HF_API_KEY")  # set in compose or env
+HF_API_URL = os.getenv("HF_API_URL")
+HF_API_KEY = os.getenv("HF_API_KEY")
 
 app = FastAPI()
 
@@ -26,14 +26,19 @@ class SuggestIn(BaseModel):
     style: Style = Style()
     role_hint: str | None = None
 
-PROMPT_SYS = (
-"You are a precise resume coach. Use only the facts in ANALYSIS. "
-"Return short, actionable, truthful suggestions. Avoid fabrications."
-)
+@app.get("/healthz")
+def health():
+    return {
+        "ok": True,
+        "has_api_key": bool(HF_API_KEY),
+        "has_api_url": bool(HF_API_URL)
+    }
+
+PROMPT_SYS = ("You are a precise resume coach. Use only the facts in ANALYSIS. "
+              "Return short, actionable, truthful suggestions. Avoid fabrications.")
 
 def build_prompt(analysis: Analysis, style: Style, role_hint: str|None) -> str:
-    return f"""
-SYSTEM:
+    return f"""SYSTEM:
 {PROMPT_SYS}
 
 ANALYSIS:
@@ -50,36 +55,41 @@ USER:
 Write {style.bullets} bullet suggestions (<= {style.max_words} words total, {style.tone} tone).
 """
 
-@app.get("/healthz")
-def health(): return {"ok": True, "provider": "hf-inference"}
-
 @app.post("/suggest")
 def suggest(inp: SuggestIn):
-    if not HF_API_KEY:
-        return {"suggestions": [], "disclaimer": "HF_API_KEY missing"}
-    prompt = build_prompt(inp.analysis, inp.style, inp.role_hint)
+    if not HF_API_KEY or not HF_API_URL:
+        raise HTTPException(status_code=500, detail="HF_API_KEY or HF_API_URL not set")
 
-    # Basic text-generation call (provider-specific; here is generic)
-    headers = {"Authorization": f"Bearer {HF_API_KEY}"}
-    payload = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": 180, "temperature": 0.4}
+    headers = {
+        "Authorization": f"Bearer {HF_API_KEY}",
+        "Content-Type": "application/json"
     }
-    r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=60)
-    r.raise_for_status()
-    text = r.json()
-    # Different models return different shapes; try to extract text
-    if isinstance(text, list) and text and "generated_text" in text[0]:
-        out = text[0]["generated_text"]
-    elif isinstance(text, dict) and "generated_text" in text:
-        out = text["generated_text"]
-    else:
-        out = str(text)
+    payload = {
+        "inputs": build_prompt(inp.analysis, inp.style, inp.role_hint),
+        "parameters": {"max_new_tokens": 220, "temperature": 0.4}
+    }
 
-    # Normalize to bullet list (split lines starting with -, •, or *)
-    lines = [l.strip(" •-*") for l in out.splitlines() if l.strip() and l.lstrip().startswith(("-", "•", "*"))]
-    # Fallback: if no bullets detected, create 1-3 bullets by sentence
+    r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=90)
+
+    # If upstream errored, surface message to caller
+    if r.status_code != 200:
+        raise HTTPException(status_code=502, detail={"hf_status": r.status_code, "hf_body": r.text})
+
+    data = r.json()
+    # Try common shapes
+    if isinstance(data, list) and data and "generated_text" in data[0]:
+        out = data[0]["generated_text"]
+    elif isinstance(data, dict) and "generated_text" in data:
+        out = data["generated_text"]
+    elif isinstance(data, list) and data and isinstance(data[0], str):
+        out = data[0]
+    else:
+        out = str(data)
+
+    lines = [l.strip(" •-*") for l in out.splitlines()
+             if l.strip() and l.lstrip().startswith(("-", "•", "*"))]
     if not lines:
         sents = [s.strip() for s in out.replace("•","").split(".") if s.strip()]
         lines = sents[:inp.style.bullets]
+
     return {"suggestions": lines[:inp.style.bullets], "disclaimer": "Only include truthful experience; do not fabricate."}

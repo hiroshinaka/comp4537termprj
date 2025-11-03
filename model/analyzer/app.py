@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Dict
-import re, json, math, hashlib
+import re, json, math
 from collections import Counter
 from sentence_transformers import SentenceTransformer, util
 
@@ -44,9 +44,14 @@ def _topk_keywords(text:str, k:int=15) -> List[str]:
 def _cosine(a,b)->float:
     return float(util.cos_sim(a,b).cpu().numpy()[0][0])
 
+
+@app.get("/")
+def root(): return {"ok": True}
+
 @app.get("/healthz")
 def health(): return {"ok": True, "model": MODEL_NAME}
 
+@app.post("/analyze")
 def analyze(inp:AnalyzeIn):
     resume_text, job_text = inp.resume_text, inp.job_text
     use_ner = bool(inp.options.get("use_ner", False))
