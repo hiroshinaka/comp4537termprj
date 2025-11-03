@@ -11,7 +11,7 @@ const database = include('database/sqlConnection');
 const db_users = include('database/dbQueries/userQuery');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 5000;
 
 const expireTime =  1 * 60 * 60 * 1000 ; //expires after 1 hour  (hours * minutes * seconds * millis)
 
