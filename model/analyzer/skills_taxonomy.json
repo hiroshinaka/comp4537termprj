@@ -1,0 +1,8 @@
+{
+  "python": ["python", "py"],
+  "mysql": ["mysql"],
+  "power bi": ["powerbi", "power bi", "pbi"],
+  "aws": ["aws", "amazon web services", "ec2", "s3", "lambda"],
+  "etl": ["etl", "extract transform load", "airflow", "glue", "data pipeline"],
+  "docker": ["docker", "containerization"]
+}

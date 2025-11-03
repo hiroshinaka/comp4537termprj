@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  analyzer:
+    container_name: analyzer-svc
+    build: ./analyzer
+    image: yourrepo/analyzer:latest
+    ports: ["8000:8000"]
+    environment:
+      PYTHONUNBUFFERED: "1"
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "2g"

@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  suggestions:
+    build: ./suggestions
+    ports: ["8001:8001"]
+    environment:
+      - HF_API_KEY=${HF_API_KEY}
+      - HF_API_URL=${HF_API_URL}
+    depends_on: [analyzer]
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1g"
