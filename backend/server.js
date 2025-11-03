@@ -1,19 +1,16 @@
 require('./utils/utils');
-
-
-require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
+const cors = require('cors');
 const MongoStore = require('./database/mongoStoreConnection');
 const bcrypt = require('bcrypt');
+require('dotenv').config();
 const saltRounds = 12;
 
-
 const database = include('database/sqlConnection');
-const db_utils = include('database/dbQueries/db_utils'); 
 const db_users = include('database/dbQueries/userQuery');
-const success = db_utils.printMySQLVersion();
 
+const app = express();
 const port = process.env.PORT || 3000;
 
 const app = express();
@@ -249,6 +246,4 @@ app.use((req, res) => {
     res.status(404).json({ error: "Not found" });
   });
 
-app.listen(port, () => {
-	console.log("Node application listening on port "+port);
-}); 
+app.listen(port, () => console.log(`API running on port ${port}`));
