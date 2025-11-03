@@ -29,7 +29,7 @@ const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
 const node_session_secret = process.env.NODE_SESSION_SECRET;
 /* END secret section */
 
-app.set('view engine', 'ejs');
+
 
 app.use(express.urlencoded({extended: false}));
 
@@ -42,7 +42,7 @@ app.use(session({
 ));
 
 app.get('/', (req,res) => {
-    res.render("index");
+    res.json({ message: "Welcome to the API root." });
 });
 
 app.get('/about', (req,res) => {
@@ -51,23 +51,9 @@ app.get('/about', (req,res) => {
         color = "black";
     }
 
-    res.render("about", {color: color} );
+    res.json({ about: true, color });
 });
 
-app.get('/contact', (req,res) => {
-    var missingEmail = req.query.missing;
-    res.render("contact", {missing: missingEmail});
-});
-
-app.post('/submitEmail', (req,res) => {
-    var email = req.body.email;
-    if (!email) {
-        res.redirect('/contact?missing=1');
-    }
-    else {
-        res.render("submitEmail", {email: email});
-    }
-});
 
 app.get('/createTables', async (req,res) => {
 
@@ -75,20 +61,19 @@ app.get('/createTables', async (req,res) => {
 
     var success = create_tables.createTables();
     if (success) {
-        res.render("successMessage", {message: "Created tables."} );
-    }
-    else {
-        res.render("errorMessage", {error: "Failed to create tables."} );
+        res.json({ message: "Created tables." });
+    } else {
+        res.status(500).json({ error: "Failed to create tables." });
     }
 });
 
 app.get('/createUser', (req,res) => {
-    res.render("createUser");
+    res.json({ message: "Create user page (not implemented in API mode)" });
 });
 
 
 app.get('/login', (req,res) => {
-    res.render("login");
+    res.json({ message: "Login page (not implemented in API mode)" });
 });
 
 app.post('/submitUser', async (req,res) => {
@@ -102,10 +87,9 @@ app.post('/submitUser', async (req,res) => {
     if (success) {
         var results = await db_users.getUsers();
 
-        res.render("submitUser",{users:results});
-    }
-    else {
-        res.render("errorMessage", {error: "Failed to create user."} );
+        res.json({ users: results });
+    } else {
+        res.status(500).json({ error: "Failed to create user." });
     }
 
 });
@@ -114,10 +98,10 @@ app.post('/signout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             console.error("Error destroying session:", err);
-            res.status(500).send("Could not sign out. Please try again.");
+            res.status(500).json({ error: "Could not sign out. Please try again." });
         } else {
             // Redirect to the home page or login page after signing out
-            res.redirect('/');
+            res.json({ message: "Signed out." });
         }
     });
 });
@@ -128,33 +112,26 @@ app.post('/loggingin', async (req,res) => {
     var password = req.body.password;
 
 
-    var results = await db_users.getUser({ user: username, hashedPassword: password });
+    var user = await db_users.getUser({ user: username });
 
-    if (results) {
-        if (results.length == 1) { //there should only be 1 user in the db that matches
-            if (bcrypt.compareSync(password, results[0].password)) {
-                req.session.authenticated = true;
-                req.session.user_type = results[0].type; 
-                req.session.username = username;
-                req.session.cookie.maxAge = expireTime;
-        
-                res.redirect('/loggedIn');
-                return;
-            }
-            else {
-                console.log("invalid password");
-            }
+    if (user) {
+        if (bcrypt.compareSync(password, user.password)) {
+            req.session.authenticated = true;
+            req.session.user_type = user.type;
+            req.session.username = username;
+            req.session.cookie.maxAge = expireTime;
+            res.json({ success: true, message: "Logged in", username });
+            return;
+        } else {
+            console.log("invalid password");
+            res.status(401).json({ error: "Invalid credentials" });
+            return;
         }
-        else {
-            console.log('invalid number of users matched: '+results.length+" (expected 1).");
-            res.redirect('/');
-            return;            
-        }
+    } else {
+        console.log('user not found');
+        res.status(401).json({ error: "User not found" });
+        return;
     }
-
-    console.log('user not found');
-    //user and password combination not found
-    res.redirect("/");
 });
 
 
@@ -188,7 +165,7 @@ function isAdmin(req) {
 function adminAuthorization(req, res, next) {
 	if (!isAdmin(req)) {
         res.status(403);
-        res.render("errorMessage", {error: "Not Authorized"});
+    res.status(403).json({ error: "Not Authorized" });
         return;
 	}
 	else {
@@ -200,26 +177,26 @@ app.use('/loggedin', sessionValidation);
 app.use('/loggedin/admin', adminAuthorization);
 
 app.get('/loggedin', (req,res) => {
-    res.render("loggedin");
+    res.json({ message: "Logged in (protected route)" });
 });
 
 app.get('/loggedin/info', (req,res) => {
-    res.render("loggedin-info");
+    res.json({ message: "Logged in info (protected route)" });
 });
 
 app.get('/loggedin/admin', (req,res) => {
-    res.render("admin");
+    res.json({ message: "Admin (protected route)" });
 });
 
 app.get('/loggedin/memberinfo', (req,res) => {
-    res.render("memberInfo", {username: req.session.username, user_type: req.session.user_type});
+    res.json({ username: req.session.username, user_type: req.session.user_type });
 });
 
 
 app.get('/rilla/:id', (req,res) => {
     var rilla = req.params.id;
 
-    res.render("rilla", {rilla: rilla});
+    res.json({ rilla });
 });
 
 
@@ -269,7 +246,7 @@ app.get('/api', (req,res) => {
 app.use(express.static(__dirname + "/public"));
 
 app.use((req, res) => {
-    res.status(404).render("404");
+    res.status(404).json({ error: "Not found" });
   });
 
 app.listen(port, () => {
