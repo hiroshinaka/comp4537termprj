@@ -1,16 +1,17 @@
-require('./utils');
+require('./utils/utils');
+
 
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoStore = require('./database/mongoStoreConnection');
 const bcrypt = require('bcrypt');
 const saltRounds = 12;
 
 
-const database = include('sqlConnection');
-const db_utils = include('database/db_utils');
-const db_users = include('database/users');
+const database = include('database/sqlConnection');
+const db_utils = include('database/dbQueries/db_utils'); 
+const db_users = include('database/dbQueries/userQuery');
 const success = db_utils.printMySQLVersion();
 
 const port = process.env.PORT || 3000;
@@ -32,16 +33,9 @@ app.set('view engine', 'ejs');
 
 app.use(express.urlencoded({extended: false}));
 
-var mongoStore = MongoStore.create({
-	mongoUrl: `mongodb+srv://${mongodb_user}:${mongodb_password}@hiroshi.7b9ukpb.mongodb.net/sessions`,
-	crypto: {
-		secret: mongodb_session_secret
-	}
-})
-
 app.use(session({ 
     secret: node_session_secret,
-	store: mongoStore, //default is memory store 
+	store: MongoStore, //default is memory store 
 	saveUninitialized: false, 
 	resave: true
 }
@@ -274,10 +268,9 @@ app.get('/api', (req,res) => {
 
 app.use(express.static(__dirname + "/public"));
 
-app.get("*", (req,res) => {
-	res.status(404);
-	res.render("404");
-})
+app.use((req, res) => {
+    res.status(404).render("404");
+  });
 
 app.listen(port, () => {
 	console.log("Node application listening on port "+port);
