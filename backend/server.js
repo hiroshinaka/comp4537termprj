@@ -27,21 +27,22 @@ if (process.env.NODE_ENV === 'production') {
 
 // Enable CORS for the frontend domain and allow credentials (cookies).
 // Default to the Vercel frontend domain you provided; override with CORS_ORIGIN env var if desired.
+// Allow all origins (reflect request origin) and allow credentials.
+// Note: when credentials: true, Access-Control-Allow-Origin cannot be '*',
+// so we reflect the actual Origin header.
 const corsOptions = {
-    origin: process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app',
+    origin: true,
     credentials: true,
 };
 app.use(require('cors')(corsOptions));
 
-
 app.use((req, res, next) => {
-    const allowed = process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app';
     const requestOrigin = req.headers.origin;
-    // If allowed is the string 'true', reflect request origin; otherwise use allowed
-    if (allowed === 'true' && requestOrigin) {
+    if (requestOrigin) {
         res.header('Access-Control-Allow-Origin', requestOrigin);
     } else {
-        res.header('Access-Control-Allow-Origin', allowed);
+        // Fallback - no origin provided (server-to-server). Use wildcard.
+        res.header('Access-Control-Allow-Origin', '*');
     }
     res.header('Access-Control-Allow-Credentials', 'true');
     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
@@ -143,10 +144,12 @@ app.post('/signout', (req, res) => {
 
 app.post('/loggingin', async (req,res) => {
     // Ensure this route always returns CORS headers for credentialed requests
-    const allowedOrigin = process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app';
-    if (allowedOrigin === 'true' && reqOrigin) {
-        res.setHeader('Access-Control-Allow-Origin', "*");
-    } 
+    const reqOrigin = req.headers.origin;
+    if (reqOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+    } else {
+        res.setHeader('Access-Control-Allow-Origin', '*');
+    }
     res.setHeader('Access-Control-Allow-Credentials', 'true');
 
     try {
