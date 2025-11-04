@@ -5,8 +5,8 @@ import axios from "axios";
 const router = express.Router();
 
 // Base URLs for your Spaces
-const ANALYZER_URL = "https://hiroshinl-analyzer.hf.space/analyze";
-const SUGGESTIONS_URL = "https://hiroshinl-suggestions.hf.space/suggest";
+const ANALYZER_URL = process.env.ANALYZER_URL;
+const SUGGESTIONS_URL = process.env.SUGGESTIONS_URL;
 
 router.post("/process-resume", async (req, res) => {
   const { resume_text, job_text } = req.body;

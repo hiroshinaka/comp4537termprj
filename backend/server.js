@@ -1,10 +1,13 @@
 require('./utils/utils');
+require('dotenv').config();
+
 const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
+const multer = require('multer');
+
 const MongoStore = require('./database/mongoStoreConnection');
 const bcrypt = require('bcrypt');
-require('dotenv').config();
 const saltRounds = 12;
 
 const database = include('database/sqlConnection');
@@ -12,6 +15,9 @@ const db_users = include('database/dbQueries/userQuery');
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// Allow JSON bodies (used when frontend sends pasted resume text)
+app.use(express.json());
 
 const expireTime =  1 * 60 * 60 * 1000 ; //expires after 1 hour  (hours * minutes * seconds * millis)
 
@@ -40,18 +46,6 @@ app.get('/', (req,res) => {
     res.json({ message: "Welcome to the API root." });
 });
 
-
-app.get('/createTables', async (req,res) => {
-
-    const create_tables = include('database/create_tables');
-
-    var success = create_tables.createTables();
-    if (success) {
-        res.json({ message: "Created tables." });
-    } else {
-        res.status(500).json({ error: "Failed to create tables." });
-    }
-});
 
 app.get('/createUser', (req,res) => {
     res.json({ message: "Create user page (not implemented in API mode)" });
@@ -179,18 +173,6 @@ app.get('/loggedin', (req,res) => {
     res.json({ message: "Logged in (protected route)" });
 });
 
-app.get('/loggedin/info', (req,res) => {
-    res.json({ message: "Logged in info (protected route)" });
-});
-
-app.get('/loggedin/admin', (req,res) => {
-    res.json({ message: "Admin (protected route)" });
-});
-
-app.get('/loggedin/memberinfo', (req,res) => {
-    res.json({ username: req.session.username, user_type: req.session.user_type });
-});
-
 
 app.get('/api', (req,res) => {
 	var user = req.session.user;
@@ -236,6 +218,52 @@ app.get('/api', (req,res) => {
 });
 
 app.use(express.static(__dirname + "/public"));
+
+// File upload + analysis
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+const { extractTextFromFile } = include('utils/documentParser');
+
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadDir),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${uuidv4()}-${file.originalname}`),
+});
+const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB
+
+app.post('/analyze', upload.single('resume'), async (req, res) => {
+    try {
+        const jobText = req.body.job || req.body.jobText || '';
+
+        let extractedText = '';
+
+        if (req.file) {
+            // File upload path
+            const filePath = req.file.path;
+            const mime = req.file.mimetype;
+            const originalName = req.file.originalname;
+            extractedText = await extractTextFromFile(filePath, mime, originalName);
+            // Optionally remove tmp file after extraction
+            // fs.unlinkSync(filePath);
+        } else if (req.body && (req.body.resume || req.body.resumeText)) {
+            // Pasted text path
+            extractedText = req.body.resume || req.body.resumeText || '';
+        } else {
+            return res.status(400).json({ error: 'No resume provided (file or pasted text).' });
+        }
+
+        // TODO: pass extractedText and jobText to analysis pipeline (AI, DB, etc.)
+
+        res.json({ success: true, extractedText, job: jobText });
+    } catch (err) {
+        console.error('/analyze error:', err && (err.message || err));
+        res.status(500).json({ error: 'Failed to analyze resume', detail: err && err.message ? err.message : String(err) });
+    }
+});
 
 // Simple DB status endpoint to help diagnose connectivity issues
 app.get('/dbstatus', async (req, res) => {
