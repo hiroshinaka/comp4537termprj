@@ -33,10 +33,7 @@ const corsOptions = {
 };
 app.use(require('cors')(corsOptions));
 
-// Fallback CORS headers: ensure Access-Control headers are present even if
-// the cors middleware doesn't run (e.g., older deploy). This will echo the
-// allowed origin or default to the provided frontend URL. It also responds
-// to OPTIONS preflight requests quickly.
+
 app.use((req, res, next) => {
     const allowed = process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app';
     const requestOrigin = req.headers.origin;
@@ -145,6 +142,13 @@ app.post('/signout', (req, res) => {
 
 
 app.post('/loggingin', async (req,res) => {
+    // Ensure this route always returns CORS headers for credentialed requests
+    const allowedOrigin = process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app';
+    if (allowedOrigin === 'true' && reqOrigin) {
+        res.setHeader('Access-Control-Allow-Origin', "*");
+    } 
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
     try {
         const username = req.body.username;
         const password = req.body.password;
