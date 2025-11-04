@@ -33,6 +33,26 @@ const corsOptions = {
 };
 app.use(require('cors')(corsOptions));
 
+// Fallback CORS headers: ensure Access-Control headers are present even if
+// the cors middleware doesn't run (e.g., older deploy). This will echo the
+// allowed origin or default to the provided frontend URL. It also responds
+// to OPTIONS preflight requests quickly.
+app.use((req, res, next) => {
+    const allowed = process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app';
+    const requestOrigin = req.headers.origin;
+    // If allowed is the string 'true', reflect request origin; otherwise use allowed
+    if (allowed === 'true' && requestOrigin) {
+        res.header('Access-Control-Allow-Origin', requestOrigin);
+    } else {
+        res.header('Access-Control-Allow-Origin', allowed);
+    }
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    if (req.method === 'OPTIONS') return res.sendStatus(200);
+    next();
+});
+
 const expireTime =  1 * 60 * 60 * 1000 ; //expires after 1 hour  (hours * minutes * seconds * millis)
 
 
