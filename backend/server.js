@@ -19,6 +19,20 @@ const port = process.env.PORT || 5000;
 // Allow JSON bodies (used when frontend sends pasted resume text)
 app.use(express.json());
 
+// When deployed behind a proxy (Render) we should trust the proxy so
+// secure cookies and other TLS-related behavior work correctly.
+if (process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
+
+// Enable CORS for the frontend domain and allow credentials (cookies).
+// Default to the Vercel frontend domain you provided; override with CORS_ORIGIN env var if desired.
+const corsOptions = {
+    origin: process.env.CORS_ORIGIN || 'https://comp4537termprj.vercel.app',
+    credentials: true,
+};
+app.use(require('cors')(corsOptions));
+
 const expireTime =  1 * 60 * 60 * 1000 ; //expires after 1 hour  (hours * minutes * seconds * millis)
 
 
@@ -34,13 +48,23 @@ const node_session_secret = process.env.NODE_SESSION_SECRET;
 
 app.use(express.urlencoded({extended: false}));
 
-app.use(session({ 
+// Configure session with secure cross-site cookie behavior in production.
+const sessionOptions = {
     secret: node_session_secret,
-	store: MongoStore, //default is memory store 
-	saveUninitialized: false, 
-	resave: true
-}
-));
+    store: MongoStore, // default is memory store
+    saveUninitialized: false,
+    resave: true,
+    cookie: {
+        maxAge: expireTime,
+        // In production our frontend is on a different origin (Vercel). To allow
+        // the browser to send cookies across origins, SameSite must be 'none'
+        // and secure must be true (HTTPS required).
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        secure: process.env.NODE_ENV === 'production' ? true : false,
+    }
+};
+
+app.use(session(sessionOptions));
 
 app.get('/', (req,res) => {
     res.json({ message: "Welcome to the API root." });
