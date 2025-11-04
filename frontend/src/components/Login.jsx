@@ -16,11 +16,31 @@ export default function Login({ onLogin, onSwitchToSignup }) {
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      let data = null;
+      // Try to parse JSON only when response content-type is JSON
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        try {
+          data = await res.json();
+        } catch (parseErr) {
+          // fallback: read as text
+          const text = await res.text();
+          console.error('Failed to parse JSON response:', parseErr, 'raw:', text);
+          setMessage(text || 'Unexpected server response.');
+          return;
+        }
+      } else {
+        // non-json response (HTML/error), read text and show as message
+        const text = await res.text();
+        console.error('Non-JSON response from /loggingin:', text);
+        setMessage(text || 'Unexpected server response.');
+        return;
+      }
+
+      if (res.ok && data && data.success) {
         if (typeof onLogin === 'function') onLogin({ username });
       } else {
-        setMessage(data.error || 'Invalid username or password.');
+        setMessage((data && data.error) || 'Invalid username or password.');
       }
     } catch (err) {
       // eslint-disable-next-line no-console

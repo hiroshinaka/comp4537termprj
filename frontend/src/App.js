@@ -3,10 +3,11 @@ import { useState } from 'react';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import ResumeInput from './components/ResumeInput';
+import Landing from './components/Landing';
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
-  const [authView, setAuthView] = useState('login'); // 'login' | 'signup'
+  const [authView, setAuthView] = useState('landing'); // 'landing' | 'login' | 'signup'
 
   if (!loggedIn) {
     if (authView === 'signup') {
@@ -17,10 +18,20 @@ function App() {
         />
       );
     }
+    if (authView === 'login') {
+      return (
+        <Login
+          onLogin={() => setLoggedIn(true)}
+          onSwitchToSignup={() => setAuthView('signup')}
+        />
+      );
+    }
+
+    // default: landing
     return (
-      <Login
-        onLogin={() => setLoggedIn(true)}
-        onSwitchToSignup={() => setAuthView('signup')}
+      <Landing
+        onGoLogin={() => setAuthView('login')}
+        onGoSignup={() => setAuthView('signup')}
       />
     );
   }
