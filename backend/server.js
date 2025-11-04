@@ -101,29 +101,33 @@ app.post('/signout', (req, res) => {
 
 
 app.post('/loggingin', async (req,res) => {
-    var username = req.body.username;
-    var password = req.body.password;
+    try {
+        const username = req.body.username;
+        const password = req.body.password;
+        console.log('/loggingin attempt for user:', username ? '[REDACTED]' : username);
 
+        const user = await db_users.getUser({ user: username });
 
-    var user = await db_users.getUser({ user: username });
-
-    if (user) {
-        if (bcrypt.compareSync(password, user.password)) {
-            req.session.authenticated = true;
-            req.session.user_type = user.type;
-            req.session.username = username;
-            req.session.cookie.maxAge = expireTime;
-            res.json({ success: true, message: "Logged in", username });
-            return;
-        } else {
-            console.log("invalid password");
-            res.status(401).json({ error: "Invalid credentials" });
+        if (user) {
+            if (bcrypt.compareSync(password, user.password)) {
+                req.session.authenticated = true;
+                req.session.user_type = user.type;
+                req.session.username = username;
+                req.session.cookie.maxAge = expireTime;
+                res.json({ success: true, message: 'Logged in', username });
+                return;
+            }
+            console.log('invalid password for user');
+            res.status(401).json({ error: 'Invalid credentials' });
             return;
         }
-    } else {
+
         console.log('user not found');
-        res.status(401).json({ error: "User not found" });
+        res.status(401).json({ error: 'User not found' });
         return;
+    } catch (err) {
+        console.error('/loggingin error:', err && (err.message || err));
+        res.status(500).json({ error: 'Server error during login', detail: err && err.message ? err.message : String(err) });
     }
 });
 
