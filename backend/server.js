@@ -224,7 +224,6 @@ app.get('/api', (req,res) => {
 app.use(express.static(__dirname + "/public"));
 
 // File upload + analysis
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
