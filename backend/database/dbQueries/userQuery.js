@@ -27,8 +27,8 @@ async function createUser({ user, hashedPassword, email = null, role = 'user' })
     );
     return rows[0] || null;
   } catch (err) {
-    console.error('createUser error:', err.code || err.message);
-    return false;
+    console.error('createUser error:', err);
+    throw err;
   }
 }
 

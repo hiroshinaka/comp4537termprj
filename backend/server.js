@@ -40,15 +40,6 @@ app.get('/', (req,res) => {
     res.json({ message: "Welcome to the API root." });
 });
 
-app.get('/about', (req,res) => {
-    var color = req.query.color;
-    if (!color) {
-        color = "black";
-    }
-
-    res.json({ about: true, color });
-});
-
 
 app.get('/createTables', async (req,res) => {
 
@@ -72,19 +63,32 @@ app.get('/login', (req,res) => {
 });
 
 app.post('/submitUser', async (req,res) => {
-    var username = req.body.username;
-    var password = req.body.password;
+    const username = req.body.username;
+    const password = req.body.password;
 
-    var hashedPassword = bcrypt.hashSync(password, saltRounds);
+    console.log('/submitUser received body:', { username: username ? '[REDACTED]' : username });
 
-    var success = await db_users.createUser({ user: username, hashedPassword: hashedPassword });
+    if (!username || !password) {
+        res.status(400).json({ error: 'Missing username or password' });
+        return;
+    }
 
-    if (success) {
-        var results = await db_users.getUsers();
+    const hashedPassword = bcrypt.hashSync(password, saltRounds);
 
-        res.json({ users: results });
-    } else {
-        res.status(500).json({ error: "Failed to create user." });
+    try {
+        const created = await db_users.createUser({ user: username, hashedPassword: hashedPassword });
+        // createUser returns the created user row on success
+        if (created) {
+            const results = await db_users.getUsers();
+            res.json({ users: results });
+            return;
+        }
+        // If it returns null/false for some reason, treat as server error
+        res.status(500).json({ error: 'Failed to create user (unknown error).' });
+    } catch (err) {
+        console.error('/submitUser error:', err && (err.code || err.sqlMessage || err.message) || err);
+        // Provide a friendlier message while including some DB error code to help debugging
+        res.status(500).json({ error: 'Failed to create user. ' + (err && (err.code || err.message) ? String(err.code || err.message) : '') });
     }
 
 });
@@ -188,13 +192,6 @@ app.get('/loggedin/memberinfo', (req,res) => {
 });
 
 
-app.get('/rilla/:id', (req,res) => {
-    var rilla = req.params.id;
-
-    res.json({ rilla });
-});
-
-
 app.get('/api', (req,res) => {
 	var user = req.session.user;
     var user_type = req.session.user_type;
@@ -239,6 +236,17 @@ app.get('/api', (req,res) => {
 });
 
 app.use(express.static(__dirname + "/public"));
+
+// Simple DB status endpoint to help diagnose connectivity issues
+app.get('/dbstatus', async (req, res) => {
+    try {
+        const [rows] = await database.query('SELECT 1 AS ok');
+        res.json({ ok: true, result: rows });
+    } catch (err) {
+        console.error('/dbstatus error:', err && (err.code || err.message) || err);
+        res.status(500).json({ ok: false, error: err && (err.code || err.message) ? String(err.code || err.message) : 'DB error' });
+    }
+});
 
 app.use((req, res) => {
     res.status(404).json({ error: "Not found" });
