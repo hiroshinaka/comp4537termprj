@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 
+// Use REACT_APP_API_URL to point to the backend in production (set this in Vercel env)
+const API_BASE = process.env.REACT_APP_API_URL || '';
+
 export default function Login({ onLogin, onSwitchToSignup }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -10,7 +13,9 @@ export default function Login({ onLogin, onSwitchToSignup }) {
     setMessage('');
     const body = new URLSearchParams({ username, password }).toString();
     try {
-      const res = await fetch('/loggingin', {
+      // Build URL: prefer API_BASE (set in production), otherwise fallback to relative path for local dev
+      const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/loggingin` : '/loggingin';
+      const res = await fetch(url, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
