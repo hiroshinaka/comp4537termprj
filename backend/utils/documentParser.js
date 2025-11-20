@@ -1,5 +1,43 @@
 const fs = require('fs');
 const path = require('path');
+
+// Setup canvas for pdf-parse (provides DOMMatrix, ImageData, Path2D, etc.)
+try {
+    const { createCanvas, ImageData, DOMMatrix } = require('canvas');
+    
+    // Polyfill DOMMatrix
+    if (!global.DOMMatrix) {
+        global.DOMMatrix = DOMMatrix || class DOMMatrix {
+            constructor() {
+                this.m = [1, 0, 0, 1, 0, 0];
+            }
+        };
+    }
+    
+    // Polyfill ImageData
+    if (!global.ImageData) {
+        global.ImageData = ImageData || class ImageData {
+            constructor(width, height) {
+                this.width = width;
+                this.height = height;
+                this.data = new Uint8ClampedArray(width * height * 4);
+            }
+        };
+    }
+    
+    // Polyfill Path2D
+    if (!global.Path2D) {
+        global.Path2D = class Path2D {
+            constructor() {}
+            moveTo() {}
+            lineTo() {}
+            closePath() {}
+        };
+    }
+} catch (err) {
+    console.warn('Canvas not available, PDF parsing may not work:', err.message);
+}
+
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 

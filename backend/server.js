@@ -2,11 +2,11 @@ require('./utils/utils');
 require('dotenv').config();
 
 const express = require('express');
-const session = require('express-session');
 const cors = require('cors');
 const multer = require('multer');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 
-const MongoStore = require('./database/mongoStoreConnection');
 const bcrypt = require('bcrypt');
 const saltRounds = 12;
 
@@ -19,70 +19,55 @@ const port = process.env.PORT || 5000;
 // Allow JSON bodies (used when frontend sends pasted resume text)
 app.use(express.json());
 
-// When deployed behind a proxy (Render) we should trust the proxy so
+// When deployed behind a proxy (Vercel/Render) we should trust the proxy so
 // secure cookies and other TLS-related behavior work correctly.
 if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
 
-// Enable CORS for the frontend domain and allow credentials (cookies).
-// Default to the Vercel frontend domain you provided; override with CORS_ORIGIN env var if desired.
-// Allow all origins (reflect request origin) and allow credentials.
-// Note: when credentials: true, Access-Control-Allow-Origin cannot be '*',
-// so we reflect the actual Origin header.
+// CORS Configuration for localhost (dev) and Vercel (production)
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3001', 
+    process.env.VERCEL_FRONTEND,
+].filter(Boolean);
+
 const corsOptions = {
-    origin: true,
+    origin: function (origin, callback) {
+        //For Postman testing
+        if (!origin) return callback(null, true);
+        
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            // In development, allow any localhost origin
+            if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost')) {
+                callback(null, true);
+            } else {
+                console.warn(`CORS blocked request from origin: ${origin}`);
+                callback(new Error('Not allowed by CORS'));
+            }
+        }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Origin', 'X-Requested-With', 'Content-Type', 'Accept', 'Authorization'],
+    exposedHeaders: ['Set-Cookie']
 };
-app.use(require('cors')(corsOptions));
 
-app.use((req, res, next) => {
-    const requestOrigin = req.headers.origin;
-    if (requestOrigin) {
-        res.header('Access-Control-Allow-Origin', requestOrigin);
-    } else {
-        // Fallback - no origin provided (server-to-server). Use wildcard.
-        res.header('Access-Control-Allow-Origin', '*');
-    }
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-    if (req.method === 'OPTIONS') return res.sendStatus(200);
-    next();
-});
+app.use(cors(corsOptions));
 
-const expireTime =  1 * 60 * 60 * 1000 ; //expires after 1 hour  (hours * minutes * seconds * millis)
+const expireTime = '1h'; // JWT expiration time
 
-
-/* secret information section */
-const mongodb_user = process.env.MONGODB_USER;
-const mongodb_password = process.env.MONGODB_PASSWORD;
-const mongodb_session_secret = process.env.MONGODB_SESSION_SECRET;
-
-const node_session_secret = process.env.NODE_SESSION_SECRET;
-/* END secret section */
-
-
+const JWT_SECRET = process.env.JWT_SECRET || 'default-jwt-secret-CHANGE-THIS';
+if (!process.env.JWT_SECRET) {
+    console.warn('WARNING: JWT_SECRET not set in .env file. Using default (insecure for production)');
+} else {
+    console.log('✓ JWT_SECRET loaded from .env');
+}
 
 app.use(express.urlencoded({extended: false}));
-
-// Configure session with secure cross-site cookie behavior in production.
-const sessionOptions = {
-    secret: node_session_secret,
-    store: MongoStore, // default is memory store
-    saveUninitialized: false,
-    resave: true,
-    cookie: {
-        maxAge: expireTime,
-        // In production our frontend is on a different origin (Vercel). To allow
-        // the browser to send cookies across origins, SameSite must be 'none'
-        // and secure must be true (HTTPS required).
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-        secure: process.env.NODE_ENV === 'production' ? true : false,
-    }
-};
-
-app.use(session(sessionOptions));
+app.use(cookieParser());
 
 app.get('/', (req,res) => {
     res.json({ message: "Welcome to the API root." });
@@ -115,35 +100,42 @@ app.post('/submitUser', async (req,res) => {
         const created = await db_users.createUser({ user: username, hashedPassword: hashedPassword });
         // createUser returns the created user row on success
         if (created) {
-            const results = await db_users.getUsers();
-            res.json({ users: results });
+            // Generate JWT token for auto-login after signup
+            const token = jwt.sign(
+                { username: created.username, user_id: created.id, user_type: created.type },
+                JWT_SECRET,
+                { expiresIn: expireTime }
+            );
+
+            // Set httpOnly cookie
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                maxAge: 60 * 60 * 1000 // 1 hour
+            });
+
+            res.json({ success: true, username: created.username });
             return;
         }
-        // If it returns null/false for some reason, treat as server error
         res.status(500).json({ error: 'Failed to create user (unknown error).' });
     } catch (err) {
         console.error('/submitUser error:', err && (err.code || err.sqlMessage || err.message) || err);
-        // Provide a friendlier message while including some DB error code to help debugging
         res.status(500).json({ error: 'Failed to create user. ' + (err && (err.code || err.message) ? String(err.code || err.message) : '') });
     }
 
 });
 app.post('/signout', (req, res) => {
-    // Destroy the session to log the user out
-    req.session.destroy((err) => {
-        if (err) {
-            console.error("Error destroying session:", err);
-            res.status(500).json({ error: "Could not sign out. Please try again." });
-        } else {
-            // Redirect to the home page or login page after signing out
-            res.json({ message: "Signed out." });
-        }
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
     });
+    res.json({ success: true, message: "Signed out." });
 });
 
 
 app.post('/loggingin', async (req,res) => {
-    // Ensure this route always returns CORS headers for credentialed requests
     const reqOrigin = req.headers.origin;
     if (reqOrigin) {
         res.setHeader('Access-Control-Allow-Origin', reqOrigin);
@@ -161,10 +153,20 @@ app.post('/loggingin', async (req,res) => {
 
         if (user) {
             if (bcrypt.compareSync(password, user.password)) {
-                req.session.authenticated = true;
-                req.session.user_type = user.type;
-                req.session.username = username;
-                req.session.cookie.maxAge = expireTime;
+                // Generate JWT token
+                const token = jwt.sign(
+                    { username: user.username, user_id: user.id, user_type: user.type },
+                    JWT_SECRET,
+                    { expiresIn: expireTime }
+                );
+
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production',
+                    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+                    maxAge: 60 * 60 * 1000 // 1 hour
+                });
+
                 res.json({ success: true, message: 'Logged in', username });
                 return;
             }
@@ -185,71 +187,66 @@ app.post('/loggingin', async (req,res) => {
 
 
 
-function isValidSession(req) {
-	if (req.session.authenticated) {
-		return true;
-	}
-	return false;
-}
+// JWT Authentication Middleware
+function authenticateToken(req, res, next) {
+    const token = req.cookies.token;
 
-function sessionValidation(req, res, next) {
-	if (!isValidSession(req)) {
-		req.session.destroy();
-		res.redirect('/');
-		return;
-	}
-	else {
-		next();
-	}
+    if (!token) {
+        return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded; 
+        next();
+    } catch (err) {
+        console.error('JWT verification failed:', err.message);
+        return res.status(403).json({ error: 'Invalid or expired token' });
+    }
 }
 
 function isAdmin(req) {
-    if (req.session.user_type == 'admin') {
-        return true;
-    }
-    return false;
+    return req.user && req.user.user_type === 'admin';
 }
 
 function adminAuthorization(req, res, next) {
-	if (!isAdmin(req)) {
-        res.status(403);
-    res.status(403).json({ error: "Not Authorized" });
-        return;
-	}
-	else {
-		next();
-	}
+    if (!isAdmin(req)) {
+        return res.status(403).json({ error: "Not Authorized" });
+    }
+    next();
 }
 
-app.use('/loggedin', sessionValidation);
+app.use('/loggedin', authenticateToken);
 app.use('/loggedin/admin', adminAuthorization);
 
 app.get('/loggedin', (req,res) => {
-    res.json({ message: "Logged in (protected route)" });
+    res.json({ message: "Logged in (protected route)", user: req.user });
+});
+
+// Verify current user from JWT token
+app.get('/me', authenticateToken, (req, res) => {
+    res.json({ 
+        success: true, 
+        user: {
+            username: req.user.username,
+            user_id: req.user.user_id,
+            user_type: req.user.user_type
+        }
+    });
 });
 
 
-app.get('/api', (req,res) => {
-	var user = req.session.user;
-    var user_type = req.session.user_type;
+app.get('/api', authenticateToken, (req,res) => {
+	const user_type = req.user.user_type;
 	console.log("api hit ");
 
-	var jsonResponse = {
-		success: false,
+	const jsonResponse = {
+		success: true,
 		data: null,
 		date: new Date()
 	};
 
-	
-	if (!isValidSession(req)) {
-		jsonResponse.success = false;
-		res.status(401);  //401 == bad user
-		res.json(jsonResponse);
-		return;
-	}
-
 	if (typeof id === 'undefined') {
-		jsonResponse.success = true;
 		if (user_type === "admin") {
 			jsonResponse.data = ["A","B","C","D"];
 		}
@@ -277,7 +274,7 @@ app.use(express.static(__dirname + "/public"));
 // File upload + analysis
 const path = require('path');
 const fs = require('fs');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const { extractTextFromFile } = include('utils/documentParser');
 
 const uploadDir = path.join(__dirname, 'uploads');
@@ -285,7 +282,7 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => cb(null, `${Date.now()}-${uuidv4()}-${file.originalname}`),
+    filename: (req, file, cb) => cb(null, `${Date.now()}-${crypto.randomUUID()}-${file.originalname}`),
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } }); // 20MB
 
