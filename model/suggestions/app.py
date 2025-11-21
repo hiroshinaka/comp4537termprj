@@ -1,10 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict
-import os, requests
+from typing import List, Dict, Optional
+import os
+import requests
 
-HF_API_URL = os.getenv("HF_API_URL")
-HF_API_KEY = os.getenv("HF_API_KEY")
+# ---------- Ollama config ----------
+# These are the ONLY env vars you need for the backend now.
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b-instruct")
 
 app = FastAPI()
 
@@ -27,15 +30,23 @@ class SuggestIn(BaseModel):
     role_hint: str | None = None
 
 @app.get("/healthz")
-def health():
+def healthz():
     return {
         "ok": True,
-        "has_api_key": bool(HF_API_KEY),
-        "has_api_url": bool(HF_API_URL)
+        "backend": "ollama",
+        "ollama": {
+            "host": OLLAMA_HOST,
+            "model": OLLAMA_MODEL,
+        },
     }
 
-PROMPT_SYS = ("You are a precise resume coach. Use only the facts in ANALYSIS. "
-              "Return short, actionable, truthful suggestions. Avoid fabrications.")
+PROMPT_SYS = (
+    "In strict mode."
+    "You are a precise resume coach. "
+    "Use only the facts in the ANALYSIS below. "
+    "Return short, actionable, truthful suggestions. "
+    "Do not invent or fabricate any experience."
+)
 
 def build_prompt(analysis: Analysis, style: Style, role_hint: str|None) -> str:
     return f"""SYSTEM:
@@ -52,44 +63,62 @@ evidence.job_snippets: {analysis.evidence.get('job_snippets', [])}
 role_hint: {role_hint or ''}
 
 USER:
-Write {style.bullets} bullet suggestions (<= {style.max_words} words total, {style.tone} tone).
+Write {style.bullets} bullet-point suggestions (max {style.max_words} words total, {style.tone} tone).
+Each bullet must be based ONLY on information in ANALYSIS.
+Do not invent projects, responsibilities, or tools that are not supported by the evidence.
+Start each suggestion with a bullet like '-' or '•'.
 """
+
+
+def call_ollama(prompt: str) -> str:
+    """Call local Ollama chat API and return the model's text."""
+    try:
+        resp = requests.post(
+            f"{OLLAMA_HOST}/api/chat",
+            json={
+                "model": OLLAMA_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "stream": False,
+            },
+            timeout=90,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Ollama error: {e}")
+
+    data = resp.json()
+    # Standard Ollama chat response: { "message": { "role": "...", "content": "..." }, ... }
+    try:
+        return data["message"]["content"]
+    except (KeyError, TypeError):
+        return str(data)
+
+def extract_bullets(text: str, bullets: int) -> List[str]:
+    """
+    Try to extract bullet-like lines first.
+    Fallback: split into sentences and use the first N.
+    """
+    # lines that start with -, •, or *
+    lines = [
+        l.strip(" •-*")
+        for l in text.splitlines()
+        if l.strip() and l.lstrip().startswith(("-", "•", "*"))
+    ]
+
+    if not lines:
+        # Fallback: simple sentence split
+        sents = [s.strip() for s in text.replace("•", "").split(".") if s.strip()]
+        lines = sents[:bullets]
+
+    return lines[:bullets]
 
 @app.post("/suggest")
 def suggest(inp: SuggestIn):
-    if not HF_API_KEY or not HF_API_URL:
-        raise HTTPException(status_code=500, detail="HF_API_KEY or HF_API_URL not set")
+    prompt = build_prompt(inp.analysis, inp.style, inp.role_hint)
+    out_text = call_ollama(prompt)
+    suggestions = extract_bullets(out_text, inp.style.bullets)
 
-    headers = {
-        "Authorization": f"Bearer {HF_API_KEY}",
-        "Content-Type": "application/json"
+    return {
+        "suggestions": suggestions,
+        "disclaimer": "Only include truthful experience; do not fabricate.",
     }
-    payload = {
-        "inputs": build_prompt(inp.analysis, inp.style, inp.role_hint),
-        "parameters": {"max_new_tokens": 220, "temperature": 0.4}
-    }
-
-    r = requests.post(HF_API_URL, headers=headers, json=payload, timeout=90)
-
-    # If upstream errored, surface message to caller
-    if r.status_code != 200:
-        raise HTTPException(status_code=502, detail={"hf_status": r.status_code, "hf_body": r.text})
-
-    data = r.json()
-    # Try common shapes
-    if isinstance(data, list) and data and "generated_text" in data[0]:
-        out = data[0]["generated_text"]
-    elif isinstance(data, dict) and "generated_text" in data:
-        out = data["generated_text"]
-    elif isinstance(data, list) and data and isinstance(data[0], str):
-        out = data[0]
-    else:
-        out = str(data)
-
-    lines = [l.strip(" •-*") for l in out.splitlines()
-             if l.strip() and l.lstrip().startswith(("-", "•", "*"))]
-    if not lines:
-        sents = [s.strip() for s in out.replace("•","").split(".") if s.strip()]
-        lines = sents[:inp.style.bullets]
-
-    return {"suggestions": lines[:inp.style.bullets], "disclaimer": "Only include truthful experience; do not fabricate."}
