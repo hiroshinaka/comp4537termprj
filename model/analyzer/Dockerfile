@@ -1,11 +1,28 @@
-# Analyzer / Suggestions Dockerfile
+# Use a slim Python image
 FROM python:3.11-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+
+# Install system deps (optional but good for scientific libs)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Workdir inside container
 WORKDIR /app
+
+# Copy only requirements first (better layer caching)
 COPY requirements.txt .
+
+# Install Python deps
 RUN pip install --no-cache-dir -r requirements.txt
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+
+
 COPY . .
-EXPOSE 7860
-# bind to $PORT; fallback to 7860 for local
-CMD ["sh","-c","uvicorn app:app --host 0.0.0.0 --port ${PORT:-7860} --workers 1"]
+
+# DigitalOcean App Platform sets 
+ENV PORT=8000
+
+# Expose the port FastAPI is running on 
+EXPOSE 8000
+
+# Start FastAPI with uvicorn
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8000}"]
