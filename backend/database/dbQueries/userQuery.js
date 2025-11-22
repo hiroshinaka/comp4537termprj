@@ -1,10 +1,11 @@
-// backend/database/dbQueries/userQuery.js
 const db = require('../sqlConnection'); // mysql2/promise pool
 
 const USERS = 'users';
 const LLM = 'llm_interactions';
 
-/** Create a user */
+/** 
+ * Query to create a user 
+ * */
 async function createUser({ user, hashedPassword, email = null, role = 'user' }) {
   try {
     const [result] = await db.query(
@@ -32,7 +33,9 @@ async function createUser({ user, hashedPassword, email = null, role = 'user' })
   }
 }
 
-/** List users (for your /submitUser page) */
+/** 
+ * List users 
+ * */
 async function getUsers() {
   const [rows] = await db.query(
     `SELECT user_id AS id, username, role AS type, is_active
@@ -93,6 +96,63 @@ async function getLlmInteractionsByUser(user_id, limit = 50) {
   return rows;
 }
 
+// --- API Usage helpers -------------------------------------------------
+// These helpers update/return usage statistics. They expect the
+// `api_usage` and `user_usage` tables to exist. The server will create
+// them on startup if missing.
+
+async function incrementApiUsage({ user_id, method, endpoint }) {
+  // upsert per-user per-endpoint counter
+  await db.query(
+    `INSERT INTO api_usage (user_id, method, endpoint, counts, last_called)
+     VALUES (?, ?, ?, 1, NOW())
+     ON DUPLICATE KEY UPDATE counts = counts + 1, last_called = NOW()`,
+    [user_id, method, endpoint]
+  );
+
+  // update aggregate per-user total
+  await db.query(
+    `INSERT INTO user_usage (user_id, total_requests, last_called)
+     VALUES (?, 1, NOW())
+     ON DUPLICATE KEY UPDATE total_requests = total_requests + 1, last_called = NOW()`,
+    [user_id]
+  );
+}
+
+async function incrementUserTotalRequests(user_id) {
+  await db.query(
+    `INSERT INTO user_usage (user_id, total_requests, last_called)
+     VALUES (?, 1, NOW())
+     ON DUPLICATE KEY UPDATE total_requests = total_requests + 1, last_called = NOW()`,
+    [user_id]
+  );
+}
+
+async function getUserTotalRequests(user_id) {
+  const [rows] = await db.query(`SELECT total_requests FROM user_usage WHERE user_id = ?`, [user_id]);
+  return rows && rows[0] ? rows[0].total_requests : 0;
+}
+
+async function getEndpointStats() {
+  const [rows] = await db.query(`
+    SELECT method, endpoint, SUM(counts) AS requests
+    FROM api_usage
+    GROUP BY method, endpoint
+    ORDER BY requests DESC
+  `);
+  return rows;
+}
+
+async function getUserStats() {
+  const [rows] = await db.query(`
+    SELECT u.user_id AS user_id, u.username AS username, u.email AS email, IFNULL(us.total_requests,0) AS total_requests
+    FROM users u
+    LEFT JOIN user_usage us ON us.user_id = u.user_id
+    ORDER BY total_requests DESC
+  `);
+  return rows;
+}
+
 module.exports = {
   createUser,
   getUsers,
@@ -100,4 +160,10 @@ module.exports = {
   deactivateUser,
   logLlmInteraction,
   getLlmInteractionsByUser,
+  // exported usage helpers
+  incrementApiUsage,
+  incrementUserTotalRequests,
+  getUserTotalRequests,
+  getEndpointStats,
+  getUserStats,
 };

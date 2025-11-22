@@ -19,7 +19,7 @@ router.post("/process-resume", async (req, res) => {
     const suggestRes = await axios.post(SUGGESTIONS_URL, {
       analysis,
       style: { bullets: 3, max_words: 90, tone: "professional" },
-      role_hint: "Data Analyst Co-op"
+      role_hint: "Software Engineer, Backend Developer, Full Stack Developer, DevOps Engineer"
     });
 
     // 3️⃣ Return combined response
