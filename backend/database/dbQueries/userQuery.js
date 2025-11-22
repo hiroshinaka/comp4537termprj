@@ -6,7 +6,7 @@ const LLM = 'llm_interactions';
 /** 
  * Query to create a user 
  * */
-async function createUser({ user, hashedPassword, email = null, role_id = 'user' }) {
+async function createUser({ user, hashedPassword, email = null, role_id = 2 }) {
   try {
     const [result] = await db.query(
       `INSERT INTO ${USERS} (username, password_hash, role_id, is_active)
