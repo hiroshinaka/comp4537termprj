@@ -41,6 +41,7 @@ function App() {
         <Signup
           onSignup={() => setLoggedIn(true)}
           onSwitchToLogin={() => setAuthView('login')}
+          onBackToHome={() => setAuthView('landing')}
         />
       );
     }
@@ -49,6 +50,7 @@ function App() {
         <Login
           onLogin={() => setLoggedIn(true)}
           onSwitchToSignup={() => setAuthView('signup')}
+          onBackToHome={() => setAuthView('landing')}
         />
       );
     }
