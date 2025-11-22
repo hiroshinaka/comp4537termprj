@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
+import MSG from '../lang/en/messages.js';
 const API_BASE = process.env.REACT_APP_API_URL || '';
 
 export default function AdminDashboard({ onLogout }) {
@@ -47,7 +47,7 @@ export default function AdminDashboard({ onLogout }) {
         <div className="max-w-7xl mx-auto">
           <div className="text-center py-12">
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
-            <p className="mt-4 text-slate-600">Loading admin dashboard...</p>
+            <p className="mt-4 text-slate-600">{MSG["loading admin dashboard"]}</p>
           </div>
         </div>
       </div>
@@ -71,7 +71,7 @@ export default function AdminDashboard({ onLogout }) {
       <div className="p-6">
         <div className="max-w-7xl mx-auto">
           <div className="mb-6">
-            <h1 className="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+            <h1 className="text-3xl font-bold text-slate-900">{MSG["admin dashboard"]}</h1>
           </div>
 
         {error && (
@@ -82,21 +82,21 @@ export default function AdminDashboard({ onLogout }) {
 
         <div className="bg-white shadow rounded-lg mb-6">
           <div className="px-6 py-4 border-b border-slate-200">
-            <h2 className="text-xl font-semibold text-slate-900">API Endpoint Statistics</h2>
-            <p className="text-sm text-slate-500 mt-1">Request counts for all endpoints</p>
+            <h2 className="text-xl font-semibold text-slate-900">{MSG["API Endpoint Statistics"]}</h2>
+            <p className="text-sm text-slate-500 mt-1">{MSG["Request count"]}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">
               <thead className="bg-slate-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Method
+                    {MSG["method"]}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Endpoint
+                    {MSG["endpoint"]}
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Requests
+                    {MSG["requests"]}
                   </th>
                 </tr>
               </thead>
@@ -104,7 +104,7 @@ export default function AdminDashboard({ onLogout }) {
                 {endpointStats.length === 0 ? (
                   <tr>
                     <td colSpan="3" className="px-6 py-4 text-center text-sm text-slate-500">
-                      No endpoint data available
+                      {MSG["no endpoint"]}
                     </td>
                   </tr>
                 ) : (
@@ -129,8 +129,8 @@ export default function AdminDashboard({ onLogout }) {
 
         <div className="bg-white shadow rounded-lg">
           <div className="px-6 py-4 border-b border-slate-200">
-            <h2 className="text-xl font-semibold text-slate-900">User API Consumption</h2>
-            <p className="text-sm text-slate-500 mt-1">Total API requests per user</p>
+            <h2 className="text-xl font-semibold text-slate-900">{MSG["user api consumption"]}</h2>
+            <p className="text-sm text-slate-500 mt-1">{MSG["total API requests per user"]}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-slate-200">

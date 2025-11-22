@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MSG from '../lang/en/messages.js';
 
 // Use REACT_APP_API_URL to point to the backend in production (set this in Vercel env)
 const API_BASE = process.env.REACT_APP_API_URL || '';
@@ -63,7 +64,7 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
             onClick={onBackToHome}
             className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-white px-4 py-2 rounded shadow-sm border border-slate-200"
           >
-            <span>←</span> Back to Home
+            <span>←</span> {MSG["back to home"]}
           </button>
         </div>
       )}
@@ -74,7 +75,7 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Username
+              {MSG["username"]}
             </label>
             <input
               id="username"
@@ -89,7 +90,7 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
+              {MSG["password"]}
             </label>
             <input
               id="password"
@@ -106,20 +107,20 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
             type="submit"
             className="w-full py-2.5 px-4 bg-slate-900 text-white font-semibold rounded-md shadow-sm hover:bg-slate-700 transition-colors duration-200"
           >
-            Login
+            {MSG["log in"]}
           </button>
         </form>
         {message && (
           <p className="mt-3 text-sm text-red-600 text-center">{message}</p>
         )}
         <div className="flex items-center justify-between mt-8">
-          <span className="text-sm text-slate-500">Don’t have an account?</span>
+          <span className="text-sm text-slate-500">{MSG["don't have an account?"]}</span>
           <button
             type="button"
             onClick={() => onSwitchToSignup && onSwitchToSignup()}
             className="text-sm font-medium text-slate-900 hover:underline"
           >
-            Sign up
+            {MSG["sign up"]}
           </button>
         </div>
         </div>

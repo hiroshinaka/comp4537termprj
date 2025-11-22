@@ -1,4 +1,5 @@
 import React from 'react';
+import MSG from '../lang/en/messages.js';
 
 export default function Landing({ onGoLogin, onGoSignup }) {
   return (
@@ -8,8 +9,8 @@ export default function Landing({ onGoLogin, onGoSignup }) {
           <div className="flex items-start gap-4">
             <div className="text-5xl">🤖</div>
             <div>
-              <h1 className="text-3xl font-extrabold text-slate-900 mb-3">Resume Analyzer</h1>
-              <p className="text-slate-600 mb-6">Upload or paste your resume and a job posting. Our AI will compare them and give you matched skills, improvement suggestions, and a fit score.</p>
+              <h1 className="text-3xl font-extrabold text-slate-900 mb-3">{MSG["Resume Analyzer"]}</h1>
+              <p className="text-slate-600 mb-6">{MSG["analyze and improve"]}</p>
 
               <div className="flex gap-3">
                 <button
@@ -17,7 +18,7 @@ export default function Landing({ onGoLogin, onGoSignup }) {
                   onClick={() => onGoSignup && onGoSignup()}
                   className="py-2.5 px-4 bg-slate-900 text-white rounded-md font-medium hover:bg-slate-700 transition-colors"
                 >
-                  Get started — Sign up
+                  {MSG["get started"]}
                 </button>
 
                 <button
@@ -25,15 +26,14 @@ export default function Landing({ onGoLogin, onGoSignup }) {
                   onClick={() => onGoLogin && onGoLogin()}
                   className="py-2.5 px-4 bg-white border border-slate-200 text-slate-900 rounded-md font-medium hover:bg-slate-50 transition-colors"
                 >
-                  Log in
+                  {MSG["log in"]}
                 </button>
               </div>
             </div>
           </div>
 
           <div className="mt-8 text-sm text-slate-500">
-            <p className="mb-2"><strong>How it works:</strong> The app analyzes the overlap between your resume and the job description, highlights missing skills, and suggests actionable edits.</p>
-            <p>You'll be able to paste text or upload files on the analysis screen after logging in.</p>
+            <p className="mb-2"><strong>{MSG["how it works"]}</strong> {MSG["app analyzes"]}</p>
           </div>
         </div>
       </div>

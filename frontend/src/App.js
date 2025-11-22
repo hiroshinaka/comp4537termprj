@@ -5,6 +5,7 @@ import Signup from './components/Signup';
 import Landing from './components/Landing';
 import ResumeInput from './components/ResumeInput';
 import AdminDashboard from './components/AdminDashboard';
+import MSG from './lang/en/messages.js';
 
 // Use REACT_APP_API_URL to point to backend in production (set this in Vercel env)
 const API_BASE = process.env.REACT_APP_API_URL || '';
@@ -78,7 +79,7 @@ function App() {
             onClick={() => setView('resume')}
             className="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded"
           >
-            Back to Resume Analyzer
+            {MSG["back to resume analyzer"]}
           </button>
         </div>
         <AdminDashboard onLogout={() => setLoggedIn(false)} />
@@ -95,7 +96,7 @@ function App() {
             onClick={() => setView('admin')}
             className="text-sm bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded"
           >
-            Admin Dashboard
+            {MSG["admin dashboard"]}
           </button>
         </div>
       )}
