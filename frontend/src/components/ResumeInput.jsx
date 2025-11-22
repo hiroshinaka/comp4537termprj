@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
 const API_BASE = process.env.REACT_APP_API_URL || '';
@@ -10,8 +10,19 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [apiUsage, setApiUsage] = useState({ totalRequests: 0, freeLimit: 100 });
 
   const handleFileChange = (e) => setSelectedFile(e.target.files?.[0] || null);
+
+  // TODO: link this to backend later for fetching API limit usage
+  useEffect(() => {
+    const mockData = {
+      totalRequests: Math.floor(Math.random() * 50) + 10,
+      freeLimit: 100,
+      overFreeLimit: false
+    };
+    setApiUsage(mockData);
+  }, []);
 
   const submitToServer = async (form) => {
     const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/analyze` : '/api/analyze';
@@ -70,6 +81,29 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-medium text-slate-700">API Usage</h3>
+            <p className="text-2xl font-bold text-slate-900 mt-1">
+              {apiUsage.totalRequests} <span className="text-sm font-normal text-slate-500">/ {apiUsage.freeLimit} requests</span>
+            </p>
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-slate-500 mb-1">Remaining</div>
+            <div className="text-lg font-semibold text-blue-600">
+              {apiUsage.freeLimit - apiUsage.totalRequests}
+            </div>
+          </div>
+        </div>
+        <div className="mt-3 bg-slate-200 rounded-full h-2 overflow-hidden">
+          <div 
+            className="bg-blue-600 h-full transition-all duration-300"
+            style={{ width: `${Math.min((apiUsage.totalRequests / apiUsage.freeLimit) * 100, 100)}%` }}
+          ></div>
+        </div>
+      </div>
+
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold text-slate-900">Resume Analyzer</h2>

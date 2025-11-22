@@ -18,10 +18,10 @@ router.post('/submitUser', async (req, res) => {
 
   try {
     const hashedPassword = bcrypt.hashSync(password, saltRounds);
-    const created = await db_users.createUser({ user: username, hashedPassword });
+    const created = await db_users.createUser({ user: username, hashedPassword, role_id: 2 });
     if (!created) return res.status(500).json({ error: 'Failed to create user' });
 
-    const token = jwt.sign({ username: created.username, user_id: created.user_id || created.id, user_type: created.type || 'user' }, JWT, { expiresIn: expireTime });
+    const token = jwt.sign({ username: created.username, user_id: created.user_id || created.id, user_type: 'user' }, JWT, { expiresIn: expireTime });
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', maxAge: 60 * 60 * 1000 });
     res.json({ success: true, username: created.username });
   } catch (err) {
@@ -42,7 +42,8 @@ router.post('/loggingin', async (req, res) => {
 
     if (!bcrypt.compareSync(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
 
-    const token = jwt.sign({ username: user.username, user_id: user.user_id || user.id, user_type: user.type || 'user' }, JWT, { expiresIn: expireTime });
+    const userType = (user.type === 1 || user.type === '1') ? 'admin' : 'user';
+    const token = jwt.sign({ username: user.username, user_id: user.user_id || user.id, user_type: userType }, JWT, { expiresIn: expireTime });
     res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', maxAge: 60 * 60 * 1000 });
     res.json({ success: true, message: 'Logged in', username: user.username });
   } catch (err) {

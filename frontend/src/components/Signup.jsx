@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-export default function Signup({ onSignup, onSwitchToLogin }) {
+export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -46,8 +46,20 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
+    <div className="min-h-screen bg-gray-50">
+      {onBackToHome && (
+        <div className="absolute top-6 right-6">
+          <button
+            type="button"
+            onClick={onBackToHome}
+            className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-white px-4 py-2 rounded shadow-sm border border-slate-200"
+          >
+            <span>←</span> Back to Home
+          </button>
+        </div>
+      )}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
         <h2 className="text-2xl font-bold text-center text-slate-900 mb-6">Sign Up</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -100,6 +112,7 @@ export default function Signup({ onSignup, onSwitchToLogin }) {
           >
             Log in
           </button>
+        </div>
         </div>
       </div>
     </div>

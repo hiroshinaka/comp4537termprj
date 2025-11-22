@@ -6,12 +6,12 @@ const LLM = 'llm_interactions';
 /** 
  * Query to create a user 
  * */
-async function createUser({ user, hashedPassword, email = null, role = 'user' }) {
+async function createUser({ user, hashedPassword, email = null, role_id = 2 }) {
   try {
     const [result] = await db.query(
-      `INSERT INTO ${USERS} (username, password_hash, role, is_active)
+      `INSERT INTO ${USERS} (username, password_hash, role_id, is_active)
        VALUES (?, ?, ?, TRUE)`,
-      [user, hashedPassword, role]
+      [user, hashedPassword, role_id]
     );
     const id = result.insertId;
 
@@ -20,7 +20,7 @@ async function createUser({ user, hashedPassword, email = null, role = 'user' })
          user_id AS id,
          username,
          password_hash AS password,  -- alias for server bcrypt.compare
-         role AS type,
+         role_id AS type,
          is_active
        FROM ${USERS}
        WHERE user_id = ?`,
@@ -38,7 +38,7 @@ async function createUser({ user, hashedPassword, email = null, role = 'user' })
  * */
 async function getUsers() {
   const [rows] = await db.query(
-    `SELECT user_id AS id, username, role AS type, is_active
+    `SELECT user_id AS id, username, role_id AS type, is_active
      FROM ${USERS}
      ORDER BY user_id`
   );
@@ -52,7 +52,7 @@ async function getUser({ user }) {
        user_id AS id,
        username,
        password_hash AS password,  -- server expects .password
-       role AS type,               -- server expects .type
+       role_id AS type,               -- server expects .type
        is_active
      FROM ${USERS}
      WHERE username = ?
