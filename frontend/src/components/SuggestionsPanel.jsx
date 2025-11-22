@@ -1,5 +1,5 @@
 import React from 'react';
-
+import MSG from '../lang/en/messages.js';
 function SkeletonLine() {
   return <div className="h-4 bg-slate-200 rounded w-full mb-3 animate-pulse" />;
 }
@@ -14,7 +14,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
           </svg>
-          <div className="text-sm text-slate-700">Loading suggestions…</div>
+          <div className="text-sm text-slate-700">{MSG["loading suggestions"]}</div>
         </div>
         <div className="bg-white rounded-md p-4 border border-slate-100">
           <SkeletonLine />
@@ -54,7 +54,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
   if (list) {
     return (
       <div className="mt-6">
-        <h3 className="text-lg font-medium text-slate-800 mb-3">Suggestions</h3>
+        <h3 className="text-lg font-medium text-slate-800 mb-3">{MSG["suggestions"]}</h3>
         <div className="bg-white rounded-md p-4 border border-slate-100">
           <ul className="list-disc list-inside space-y-2 text-sm text-slate-800">
             {list.map((it, idx) => (
@@ -71,7 +71,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
     const text = suggestions.text || suggestions.content;
     return (
       <div className="mt-6">
-        <h3 className="text-lg font-medium text-slate-800 mb-3">Suggestions</h3>
+        <h3 className="text-lg font-medium text-slate-800 mb-3">{MSG["suggestions"]}</h3>
         <div className="bg-white rounded-md p-4 border border-slate-100 text-sm text-slate-800">
           <div className="whitespace-pre-wrap">{text}</div>
         </div>
@@ -82,7 +82,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
   // Fallback: pretty-print object
   return (
     <div className="mt-6">
-      <h3 className="text-lg font-medium text-slate-800 mb-3">Suggestions</h3>
+      <h3 className="text-lg font-medium text-slate-800 mb-3">{MSG["suggestions"]}</h3>
       <div className="bg-white rounded-md p-4 border border-slate-100">
         <pre className="whitespace-pre-wrap text-sm text-slate-800">{JSON.stringify(suggestions, null, 2)}</pre>
       </div>

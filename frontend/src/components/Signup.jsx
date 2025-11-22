@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import MSG from '../lang/en/messages.js';
 export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -54,18 +54,18 @@ export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
             onClick={onBackToHome}
             className="text-sm text-slate-600 hover:text-slate-900 flex items-center gap-1 bg-white px-4 py-2 rounded shadow-sm border border-slate-200"
           >
-            <span>←</span> Back to Home
+            <span>←</span> {MSG["back to home"]}
           </button>
         </div>
       )}
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-full max-w-md p-8 bg-white rounded-2xl shadow-lg">
-        <h2 className="text-2xl font-bold text-center text-slate-900 mb-6">Sign Up</h2>
+        <h2 className="text-2xl font-bold text-center text-slate-900 mb-6">{MSG["sign up"]}</h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-              Username
+              {MSG["username"]}
             </label>
             <input
               id="username"
@@ -80,7 +80,7 @@ export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-              Password
+              {MSG["password"]}
             </label>
             <input
               id="password"
@@ -97,20 +97,20 @@ export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
             type="submit"
             className="w-full py-2.5 px-4 bg-slate-900 text-white font-semibold rounded-md shadow-sm hover:bg-slate-700 transition-colors duration-200"
           >
-            Sign Up
+            {MSG["sign up"]}
           </button>
         </form>
         {message && (
           <p className="mt-3 text-sm text-red-600 text-center">{message}</p>
         )}
         <div className="flex items-center justify-between mt-8">
-          <span className="text-sm text-slate-500">Already have an account?</span>
+          <span className="text-sm text-slate-500">{MSG["don't have an account?"]}</span>
           <button
             type="button"
             onClick={() => onSwitchToLogin && onSwitchToLogin()}
             className="text-sm font-medium text-slate-900 hover:underline"
           >
-            Log in
+            {MSG["log in"]}
           </button>
         </div>
         </div>
