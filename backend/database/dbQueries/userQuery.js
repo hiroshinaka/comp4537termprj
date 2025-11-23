@@ -1,31 +1,29 @@
-const db = require('../sqlConnection'); // mysql2/promise pool
+const db = require('../sqlConnection');
 
 const USERS = 'users';
 const LLM = 'llm_interactions';
 
-/** 
- * Query to create a user 
- * */
-async function createUser({ user, hashedPassword, email = null, role_id = 2 }) {
+/** Create a user (signup) */
+async function createUser({ user, hashedPassword, role_id = 2 }) {
   try {
     const [result] = await db.query(
-      `INSERT INTO ${USERS} (username, password_hash, role_id, is_active)
+      `INSERT INTO users (username, password_hash, role_id, is_active)
        VALUES (?, ?, ?, TRUE)`,
       [user, hashedPassword, role_id]
     );
-    const id = result.insertId;
 
     const [rows] = await db.query(
       `SELECT 
          user_id AS id,
          username,
-         password_hash AS password,  -- alias for server bcrypt.compare
+         password_hash AS password,  -- alias
          role_id AS type,
          is_active
-       FROM ${USERS}
+       FROM users
        WHERE user_id = ?`,
-      [id]
+      [result.insertId]
     );
+
     return rows[0] || null;
   } catch (err) {
     console.error('createUser error:', err);
@@ -33,36 +31,34 @@ async function createUser({ user, hashedPassword, email = null, role_id = 2 }) {
   }
 }
 
-/** 
- * List users 
- * */
+/** List users */
 async function getUsers() {
   const [rows] = await db.query(
-    `SELECT user_id AS id, username, role_id AS type, is_active
+    `SELECT user_id, username, role_id, is_active
      FROM ${USERS}
      ORDER BY user_id`
   );
   return rows;
 }
 
-/** Get one user by username (for login) */
+/** Get a single user by username (for login) */
 async function getUser({ user }) {
   const [rows] = await db.query(
     `SELECT 
        user_id AS id,
        username,
-       password_hash AS password,  -- server expects .password
-       role_id AS type,               -- server expects .type
+       password_hash AS password,  -- alias for bcrypt.compareSync
+       role_id AS type,            -- 1 = admin, 2 = user
        is_active
-     FROM ${USERS}
+     FROM users
      WHERE username = ?
      LIMIT 1`,
     [user]
   );
+
   return rows[0] || null;
 }
 
-/** Optional: deactivate user */
 async function deactivateUser(id) {
   const [res] = await db.query(
     `UPDATE ${USERS} SET is_active = FALSE WHERE user_id = ?`,
@@ -70,8 +66,6 @@ async function deactivateUser(id) {
   );
   return res.affectedRows === 1;
 }
-
-/** ---- LLM interaction helpers (matches llm_interactions) ---- */
 
 /** Log an LLM interaction */
 async function logLlmInteraction({ user_id, user_input, llm_output }) {
@@ -83,7 +77,7 @@ async function logLlmInteraction({ user_id, user_input, llm_output }) {
   return res.insertId;
 }
 
-/** Get a user's recent interactions */
+/** Fetch recent LLM interactions */
 async function getLlmInteractionsByUser(user_id, limit = 50) {
   const [rows] = await db.query(
     `SELECT interaction_id, user_id, user_input, llm_output, created_at
@@ -96,13 +90,8 @@ async function getLlmInteractionsByUser(user_id, limit = 50) {
   return rows;
 }
 
-// --- API Usage helpers -------------------------------------------------
-// These helpers update/return usage statistics. They expect the
-// `api_usage` and `user_usage` tables to exist. The server will create
-// them on startup if missing.
-
+/** Usage tracking helpers */
 async function incrementApiUsage({ user_id, method, endpoint }) {
-  // upsert per-user per-endpoint counter
   await db.query(
     `INSERT INTO api_usage (user_id, method, endpoint, counts, last_called)
      VALUES (?, ?, ?, 1, NOW())
@@ -110,7 +99,6 @@ async function incrementApiUsage({ user_id, method, endpoint }) {
     [user_id, method, endpoint]
   );
 
-  // update aggregate per-user total
   await db.query(
     `INSERT INTO user_usage (user_id, total_requests, last_called)
      VALUES (?, 1, NOW())
@@ -129,7 +117,10 @@ async function incrementUserTotalRequests(user_id) {
 }
 
 async function getUserTotalRequests(user_id) {
-  const [rows] = await db.query(`SELECT total_requests FROM user_usage WHERE user_id = ?`, [user_id]);
+  const [rows] = await db.query(
+    `SELECT total_requests FROM user_usage WHERE user_id = ?`,
+    [user_id]
+  );
   return rows && rows[0] ? rows[0].total_requests : 0;
 }
 
@@ -145,7 +136,11 @@ async function getEndpointStats() {
 
 async function getUserStats() {
   const [rows] = await db.query(`
-    SELECT u.user_id AS user_id, u.username AS username, u.email AS email, IFNULL(us.total_requests,0) AS total_requests
+    SELECT 
+      u.user_id,
+      u.username,
+      u.email,
+      IFNULL(us.total_requests,0) AS total_requests
     FROM users u
     LEFT JOIN user_usage us ON us.user_id = u.user_id
     ORDER BY total_requests DESC
@@ -160,7 +155,6 @@ module.exports = {
   deactivateUser,
   logLlmInteraction,
   getLlmInteractionsByUser,
-  // exported usage helpers
   incrementApiUsage,
   incrementUserTotalRequests,
   getUserTotalRequests,
