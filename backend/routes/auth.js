@@ -11,6 +11,48 @@ const expireTime = '1h';
 const JWT = process.env.JWT_SECRET || 'dev-secret';
 
 // Create user (signup)
+/**
+ * @swagger
+ * /submitUser:
+ *   post:
+ *     summary: Create a new user account (signup)
+ *     description: Register a new user. On success the server sets an httpOnly authentication cookie.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: User created and authenticated
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 username:
+ *                   type: string
+ *       400:
+ *         description: Missing input
+ *       500:
+ *         description: Server error
+ */
 router.post('/submitUser', async (req, res) => {
   const username = req.body.username;
   const password = req.body.password;
@@ -31,6 +73,50 @@ router.post('/submitUser', async (req, res) => {
 });
 
 // Login
+/**
+ * @swagger
+ * /loggingin:
+ *   post:
+ *     summary: Log in a user
+ *     description: Authenticates a user and sets an httpOnly cookie on success.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/x-www-form-urlencoded:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Logged in
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: Missing credentials
+ *       401:
+ *         description: Invalid credentials
+ *       500:
+ *         description: Server error
+ */
 router.post('/loggingin', async (req, res) => {
   try {
     const username = req.body.username;
@@ -53,12 +139,63 @@ router.post('/loggingin', async (req, res) => {
 });
 
 // Signout
+/**
+ * @swagger
+ * /signout:
+ *   post:
+ *     summary: Sign out the current user
+ *     description: Clears the authentication cookie and ends the session on the client.
+ *     responses:
+ *       200:
+ *         description: Signed out
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ */
 router.post('/signout', (req, res) => {
   res.clearCookie('token', { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' });
   res.json({ success: true, message: 'Signed out' });
 });
 
 // Me - verify token; lightweight check
+/**
+ * @swagger
+ * /me:
+ *   get:
+ *     summary: Get current authenticated user
+ *     description: Returns the decoded user information from the httpOnly JWT cookie.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user info
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     username:
+ *                       type: string
+ *                     user_id:
+ *                       type: integer
+ *                     user_type:
+ *                       type: string
+ *       401:
+ *         description: Authentication required
+ *       403:
+ *         description: Invalid or expired token
+ */
 router.get('/me', (req, res) => {
   const token = req.cookies && req.cookies.token;
   if (!token) return res.status(401).json({ error: 'Authentication required' });
