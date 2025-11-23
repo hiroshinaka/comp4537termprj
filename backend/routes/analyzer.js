@@ -119,7 +119,8 @@ router.post('/analyze', upload.single('resume'), async (req, res) => {
 
     let sResp;
     try {
-      sResp = await postJsonWithTimeout(suggestionsUrl, { analysis, style: { bullets: 3, max_words: 90, tone: 'professional' }, role_hint: req.body.role_hint || '' }, SUGGESTIONS_TIMEOUT);
+      const style = (req.body && req.body.style) ? req.body.style : { bullets: 7, max_words: 90, tone: 'professional' };
+      sResp = await postJsonWithTimeout(suggestionsUrl, { analysis, style, role_hint: req.body.role_hint || '' }, SUGGESTIONS_TIMEOUT);
     } catch (err) {
       if (err.name === 'AbortError') {
         console.warn('/api/analyze suggestions timed out');
