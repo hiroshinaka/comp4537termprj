@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import MSG from '../lang/en/messages.js';
 
 // Use REACT_APP_API_URL to point to the backend in production (set this in Vercel env)
-const API_BASE = process.env.REACT_APP_API_URL || '';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 
 export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
   const [username, setUsername] = useState('');
@@ -14,7 +14,6 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
     setMessage('');
     const body = new URLSearchParams({ username, password }).toString();
     try {
-      // Build URL: prefer API_BASE (set in production), otherwise fallback to relative path for local dev
       const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/loggingin` : '/loggingin';
       const res = await fetch(url, {
         method: 'POST',
@@ -23,20 +22,18 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
         body
       });
       let data = null;
-      // Try to parse JSON only when response content-type is JSON
+      
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         try {
           data = await res.json();
         } catch (parseErr) {
-          // fallback: read as text
           const text = await res.text();
           console.error('Failed to parse JSON response:', parseErr, 'raw:', text);
           setMessage(text || 'Unexpected server response.');
           return;
         }
       } else {
-        // non-json response (HTML/error), read text and show as message
         const text = await res.text();
         console.error('Non-JSON response from /loggingin:', text);
         setMessage(text || 'Unexpected server response.');
@@ -49,7 +46,6 @@ export default function Login({ onLogin, onSwitchToSignup, onBackToHome }) {
         setMessage((data && data.error) || 'Invalid username or password.');
       }
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Login error:', err);
       setMessage('Login failed. Please try again.');
     }

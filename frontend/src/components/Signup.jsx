@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import MSG from '../lang/en/messages.js';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:4000';
 export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -11,12 +12,15 @@ export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
     try {
       // Create user via backend form handler
       const createBody = new URLSearchParams({ username, password }).toString();
-      const createRes = await fetch('/submitUser', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: createBody,
-      });
+      const createRes = await fetch(
+        `${API_BASE.replace(/\/$/, '')}/submitUser`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: createBody,
+        }
+      );
 
       if (!createRes.ok) {
         setMessage('Signup failed. Please try a different username.');
@@ -24,22 +28,36 @@ export default function Signup({ onSignup, onSwitchToLogin, onBackToHome }) {
       }
 
       // Attempt auto-login to establish session
-      const loginBody = new URLSearchParams({ username, password }).toString();
-      const loginRes = await fetch('/loggingin', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: loginBody,
-      });
+            const loginBody = new URLSearchParams({ username, password }).toString();
+      const loginRes = await fetch(
+        `${API_BASE.replace(/\/$/, '')}/loggingin`,
+        {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: loginBody,
+        }
+      );
 
-      const success = loginRes.redirected && /\/loggedin/i.test(loginRes.url);
-      if (success) {
+      let loginData = null;
+      const ct = loginRes.headers.get('content-type') || '';
+      if (ct.includes('application/json')) {
+        loginData = await loginRes.json();
+      } else {
+        const text = await loginRes.text();
+        console.error('Non-JSON login response:', text);
+      }
+
+      if (loginRes.ok && loginData && loginData.success) {
         if (typeof onSignup === 'function') onSignup({ username });
       } else {
-        setMessage('Signed up, but auto-login failed. Please log in.');
+        setMessage(
+          (loginData && loginData.error) ||
+          'Signed up, but auto-login failed. Please log in.'
+        );
       }
+
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Signup error:', err);
       setMessage('Signup failed. Please try again later.');
     }

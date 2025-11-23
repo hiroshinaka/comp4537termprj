@@ -1,4 +1,3 @@
-// Entry point (refactored): lightweight server that mounts routers
 require('./utils/utils');
 require('dotenv').config();
 
@@ -8,7 +7,7 @@ const cookieParser = require('cookie-parser');
 const database = include('database/sqlConnection');
 const {swaggerUi, swaggerSpec} = require('./swagger');
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 4000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -21,6 +20,7 @@ if (process.env.NODE_ENV === 'production') {
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://comp4537termprj.vercel.app',
   process.env.VERCEL_FRONTEND,
 ].filter(Boolean);
 
@@ -55,7 +55,6 @@ app.get('/dbstatus', async (req, res) => {
 app.use(express.static(__dirname + '/public'));
 
 // Mount API router
-// Auth routes (keep old endpoints that frontend expects)
 const authRouter = require('./routes/auth');
 app.use('/', authRouter);
 
