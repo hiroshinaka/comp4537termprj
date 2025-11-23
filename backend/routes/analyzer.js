@@ -17,7 +17,44 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 20 * 1024 * 1024 } });
 
-// POST /analyze - accepts file upload (multipart/form-data) or JSON with resume/job
+/**
+ * @swagger
+ * /analyze:
+ *   post:
+ *     summary: Analyze a resume and generate suggestions
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resume:
+ *                 type: string
+ *                 format: binary
+ *               job:
+ *                 type: string
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resume:
+ *                 type: string
+ *               job:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: OK
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 suggestions:
+ *                   type: object
+ */
 router.post('/analyze', upload.single('resume'), async (req, res) => {
   let uploadedFilePath = null;
   try {

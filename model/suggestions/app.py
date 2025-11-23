@@ -20,8 +20,8 @@ class Analysis(BaseModel):
     evidence: Dict[str, List[str]]
 
 class Style(BaseModel):
-    bullets: int = 3
-    max_words: int = 90
+    bullets: int = 7
+    max_words: int = 100
     tone: str = "professional"
 
 class SuggestIn(BaseModel):
