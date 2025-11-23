@@ -115,6 +115,54 @@ async function extractTextFromFile(filePath, mimeType = '', originalName = '') {
   }
 }
 
+async function extractTextFromBuffer(buffer, mimeType = '', originalName = '') {
+  const lowerName = (originalName || '').toLowerCase();
+  const lowerMime = (mimeType || '').toLowerCase();
+
+  try {
+    // PDF
+    if (lowerMime === 'application/pdf' || lowerName.endsWith('.pdf')) {
+      if (typeof pdfParse === 'function') {
+        const parsed = await pdfParse(buffer);
+        return (parsed && parsed.text) ? String(parsed.text).trim() : '';
+      }
+      const PDFParseClass = (pdfParse && (pdfParse.PDFParse || (pdfParse.default && pdfParse.default.PDFParse)));
+      if (typeof PDFParseClass === 'function') {
+        const parser = new PDFParseClass({ data: buffer });
+        try {
+          const textResult = await parser.getText();
+          return (textResult && textResult.text) ? String(textResult.text).trim() : '';
+        } finally {
+          if (typeof parser.destroy === 'function') await parser.destroy();
+        }
+      }
+      throw new Error('pdf-parse import is not a recognized callable or PDFParse class; check installed version and CommonJS/ESM interop');
+    }
+
+    // DOCX
+    if (lowerMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || lowerName.endsWith('.docx')) {
+      const result = await mammoth.extractRawText({ buffer });
+      return (result && result.value) ? String(result.value).trim() : '';
+    }
+
+    // Plain text
+    if (lowerMime.startsWith('text/') || lowerName.endsWith('.txt')) {
+      return String(buffer.toString('utf8'));
+    }
+
+    // Unknown type: try to decode as utf8
+    try {
+      return String(buffer.toString('utf8'));
+    } catch (err) {
+      throw new Error('Unsupported file type for text extraction from buffer');
+    }
+  } catch (err) {
+    console.error('extractTextFromBuffer error:', err && (err.stack || err.message || err));
+    throw new Error(`extractTextFromBuffer failed: ${err && err.message ? err.message : String(err)}`);
+  }
+}
+
 module.exports = {
   extractTextFromFile,
+  extractTextFromBuffer,
 };
