@@ -15,6 +15,19 @@ function App() {
   const [userType, setUserType] = useState(null); // 'admin' or 'user'
   const [view, setView] = useState('resume');     // 'resume' or 'admin'
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const handleLogout = async () => {
+    try {
+      await fetch(`${API_BASE}/signout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } catch (err) {
+      console.error('Logout request failed:', err);
+    } finally {
+      setLoggedIn(false);
+      setUserType(null);
+    }
+  };
 
   // On first load: check if there is a valid JWT cookie
   useEffect(() => {
@@ -123,12 +136,7 @@ function App() {
             {MSG['back to resume analyzer']}
           </button>
         </div>
-        <AdminDashboard
-          onLogout={() => {
-            setLoggedIn(false);
-            setUserType(null);
-          }}
-        />
+        <AdminDashboard onLogout={handleLogout} />
       </div>
     );
   }
@@ -182,10 +190,7 @@ function App() {
             console.error('Analyze request failed:', err);
           }
         }}
-        onLogout={() => {
-          setLoggedIn(false);
-          setUserType(null);
-        }}
+        onLogout={handleLogout}
       />
     </div>
   );
