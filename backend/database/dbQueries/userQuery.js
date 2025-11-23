@@ -67,6 +67,48 @@ async function deactivateUser(id) {
   return res.affectedRows === 1;
 }
 
+async function getUsersPaginated({ page = 1, limit = 10 }) {
+  const offset = (page - 1) * limit;
+  const [rows] = await db.query(
+    `SELECT user_id AS id, username, email, role_id, is_active, created_at
+     FROM ${USERS}
+     ORDER BY user_id DESC
+     LIMIT ? OFFSET ?`,
+    [Number(limit), Number(offset)]
+  );
+  
+  const [countResult] = await db.query(`SELECT COUNT(*) as total FROM ${USERS}`);
+  const total = countResult[0].total;
+  
+  return {
+    users: rows,
+    pagination: {
+      page: Number(page),
+      limit: Number(limit),
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  };
+}
+
+async function updateUserRole(userId, roleId) {
+  const [res] = await db.query(
+    `UPDATE ${USERS} SET role_id = ? WHERE user_id = ?`,
+    [roleId, userId]
+  );
+  return res.affectedRows === 1;
+}
+
+async function deleteUser(userId) {
+  const [res] = await db.query(
+    `DELETE FROM ${USERS} WHERE user_id = ?`,
+    [userId]
+  );
+  return res.affectedRows === 1;
+}
+
+/** ---- LLM interaction helpers (matches llm_interactions) ---- */
+
 /** Log an LLM interaction */
 async function logLlmInteraction({ user_id, user_input, llm_output }) {
   const [res] = await db.query(
@@ -153,6 +195,9 @@ module.exports = {
   getUsers,
   getUser,
   deactivateUser,
+  getUsersPaginated,
+  updateUserRole,
+  deleteUser,
   logLlmInteraction,
   getLlmInteractionsByUser,
   incrementApiUsage,

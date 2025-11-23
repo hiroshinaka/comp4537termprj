@@ -32,6 +32,37 @@ router.get('/me/usage', async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/me/usage:
+ *   get:
+ *     summary: Get authenticated user's API usage summary
+ *     description: Returns total requests for the authenticated user, free limit, and whether the user is over the free limit.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Usage summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 usage:
+ *                   type: object
+ *                   properties:
+ *                     totalRequests:
+ *                       type: integer
+ *                     freeLimit:
+ *                       type: integer
+ *                     overFreeLimit:
+ *                       type: boolean
+ *       401:
+ *         description: Authentication required
+ */
+
 // Admin routes
 router.get('/admin/endpoint-stats', adminAuthorization, async (req, res) => {
   try {
@@ -43,6 +74,39 @@ router.get('/admin/endpoint-stats', adminAuthorization, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/endpoint-stats:
+ *   get:
+ *     summary: Get aggregated endpoint usage statistics
+ *     description: Returns aggregated counts per HTTP method and endpoint. Admin-only.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of endpoint statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       method:
+ *                         type: string
+ *                       endpoint:
+ *                         type: string
+ *                       requests:
+ *                         type: integer
+ *       403:
+ *         description: Not authorized
+ */
+//
 router.get('/admin/user-stats', adminAuthorization, async (req, res) => {
   try {
     const rows = await db_users.getUserStats();
@@ -52,6 +116,41 @@ router.get('/admin/user-stats', adminAuthorization, async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch user stats' });
   }
 });
+
+/**
+ * @swagger
+ * /api/admin/user-stats:
+ *   get:
+ *     summary: Get per-user API consumption stats
+ *     description: Returns a list of users with their total API request counts. Admin-only.
+ *     security:
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of user stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       user_id:
+ *                         type: integer
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       total_requests:
+ *                         type: integer
+ *       403:
+ *         description: Not authorized
+ */
 // NOTE: analyzer and suggestions endpoints are provided by mounted sub-routers:
 //  - POST /api/analyzer/analyze  (file upload or pasted text)
 //  - POST /api/analyzer/raw      (raw analyzer proxy)
