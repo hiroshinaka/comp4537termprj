@@ -74,14 +74,10 @@ def analyze(inp:AnalyzeIn):
     sem_sim = max(0.0, min(1.0, _cosine(emb_res, emb_job)))  # clamp
 
      # coverage heuristic
-    must = ["aws","etl","docker"]
-    coverage = sum(1 for m in must if m in skills_job and m not in missing) / max(1,len([m for m in must if m in skills_job]))
-    if math.isnan(coverage): coverage = 0.0
+    coverage = 0.0
 
     # skill overlap
-    overlap = len(matched) / max(1, len(skills_job))
-
-    score = round(100*(0.4*overlap + 0.4*sem_sim + 0.2*coverage))
+    matched_pct = len(matched) / max(1, len(skills_job))
 
     # crude evidence (short spans)
     def snippets(txt, keys):
@@ -96,8 +92,8 @@ def analyze(inp:AnalyzeIn):
         "skills_detected": skills_res,
         "skills_required": skills_job,
         "matched_skills": matched,
+        "matches_pct": matched_pct,
         "missing_skills": missing,
-        "fit_score": int(score),
         "evidence": {
             "resume_snippets": snippets(resume_text, matched),
             "job_snippets": snippets(job_text, skills_job)

@@ -57,12 +57,14 @@ skills_detected: {analysis.skills_detected}
 skills_required: {analysis.skills_required}
 matched_skills: {analysis.matched_skills}
 missing_skills: {analysis.missing_skills}
-fit_score: {analysis.fit_score}
+matched_pct: {analysis.matched_pct}
 evidence.resume_snippets: {analysis.evidence.get('resume_snippets', [])}
 evidence.job_snippets: {analysis.evidence.get('job_snippets', [])}
 role_hint: {role_hint or ''}
 
 USER:
+First write a brieft summary of the candidate's fit for the role based on the ANALYSIS and using the evidence.resume_snippets. 
+Highlight their key strengths.
 Write {style.bullets} bullet-point suggestions (max {style.max_words} words total, {style.tone} tone).
 Each bullet must be based ONLY on information in ANALYSIS.
 Do not invent projects, responsibilities, or tools that are not supported by the evidence.
@@ -79,8 +81,9 @@ def call_ollama(prompt: str) -> str:
                 "model": OLLAMA_MODEL,
                 "messages": [{"role": "user", "content": prompt}],
                 "stream": False,
+                
             },
-            timeout=90,
+            timeout=180,
         )
         resp.raise_for_status()
     except requests.RequestException as e:
