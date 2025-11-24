@@ -15,6 +15,7 @@ function App() {
   const [userType, setUserType] = useState(null); // 'admin' or 'user'
   const [view, setView] = useState('resume');     // 'resume' or 'admin'
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [warning, setWarning] = useState(null);
   const handleLogout = async () => {
     try {
       await fetch(`${API_BASE}/signout`, {
@@ -168,6 +169,12 @@ function App() {
                 body: form,
               });
               const data = await res.json();
+              if (data.usage && data.usage.overFreeLimit) {
+                // e.g. set some local state to show a banner
+                setWarning(
+                  `Heads up: you’ve used ${data.usage.totalRequests} of your 20 free requests.`
+                );
+              }
               return data;
             }
 

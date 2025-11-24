@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
-const API_BASE = process.env.REACT_APP_API_URL || '';
-
+const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
+const ANALYZE_URL = API_BASE
+  ? `${API_BASE.replace(/\/$/, '')}/api/analyzer/analyze`
+  : '/api/analyzer/analyze';
 export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
@@ -10,7 +12,8 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   const [analysisResult, setAnalysisResult] = useState(null); // will now hold suggestions response
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [apiUsage, setApiUsage] = useState({ totalRequests: 0, freeLimit: 100 });
+  const [apiUsage, setApiUsage] = useState({ totalRequests: 0, freeLimit: 20, overFreeLimit: false });
+  const [warning, setWarning] = useState(null);
 
   const fileInputRef = useRef(null);
 
@@ -160,7 +163,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
           <div className="text-right">
             <div className="text-xs text-slate-500 mb-1">Remaining</div>
             <div className="text-lg font-semibold text-blue-600">
-              {apiUsage.freeLimit - apiUsage.totalRequests}
+              {Math.max(apiUsage.freeLimit - apiUsage.totalRequests, 0)}
             </div>
           </div>
         </div>
@@ -175,6 +178,12 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
             }}
           ></div>
         </div>
+
+        {warning && (
+          <div className="mt-3 text-xs sm:text-sm text-yellow-800 bg-yellow-100 border border-yellow-300 px-3 py-2 rounded">
+            {warning}
+          </div>
+        )}
       </div>
 
       {/* Main card */}
@@ -293,7 +302,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
                     d="M4 12a8 8 0 018-8v8z"
                   ></path>
                 </svg>
-              ) : null}
+              )}
               Analyze
             </button>
           </div>
