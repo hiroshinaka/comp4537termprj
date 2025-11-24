@@ -43,8 +43,8 @@ router.post('/suggestions', async (req, res) => {
     const outgoingStyle =
       style ||
       {
-        bullets: 7,
-        max_words: 200,
+        bullets: 5,
+        max_words: 180,
         tone: 'professional',
       };
 

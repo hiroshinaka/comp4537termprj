@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
-const API_BASE = process.env.REACT_APP_API_URL || '';
+const API_BASE = process.env.REACT_APP_API_URL || ' https://sea-lion-app-3wol8.ondigitalocean.app';
 
 export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
@@ -10,34 +10,53 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   const [analysisResult, setAnalysisResult] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [apiUsage, setApiUsage] = useState({
-    totalRequests: 0,
-    freeLimit: 20,
-  });
+  const [apiUsage, setApiUsage] = useState({ totalRequests: 0, freeLimit: 20, overFreeLimit: false });
+  const [warning, setWarning] = useState(null);
 
+
+  const handleFileChange = (e) => setSelectedFile(e.target.files?.[0] || null);
   const fileInputRef = useRef(null);
-
-  const handleFileChange = (e) => {
-    const file = e && e.target && e.target.files ? e.target.files[0] : null;
-    setSelectedFile(file || null);
-  };
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
     // reset native input so the same file can be re-selected later
-    if (fileInputRef.current) {
-      fileInputRef.current.value = null;
+    if (fileInputRef.current) fileInputRef.current.value = null;
+  };
+
+  const applyUsage = (usage) => {
+    if (!usage) return;
+    setApiUsage({
+      totalRequests: usage.totalRequests ?? usage.total_requests ?? 0,
+      freeLimit: usage.freeLimit ?? 20,
+      overFreeLimit: !!usage.overFreeLimit,
+    });
+
+    if (usage.overFreeLimit) {
+      setWarning(
+        `⚠️ You’ve passed your 20 free analysis tokens. You can still use the app, but additional usage may count as paid/over-limit.`
+      );
+    } else {
+      setWarning(null);
+    }
+  };
+
+  const fetchUsage = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/me/usage`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data && data.usage) {
+        applyUsage(data.usage);
+      }
+    } catch (err) {
+      console.error('Failed to fetch usage:', err);
     }
   };
 
   useEffect(() => {
-    const mockData = {
-      totalRequests: Math.floor(Math.random() * 50) + 10,
-      freeLimit: 20,
-      overFreeLimit: false,
-    };
-    setApiUsage(mockData);
+    fetchUsage();
   }, []);
+
 
   const analyzeUrl = API_BASE + '/api/analyze'
 
@@ -103,7 +122,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     setLoading(true);
 
     try {
-      // Validation for text-only mode
+      // FILE PATH
       if (!selectedFile && (!resume || !job)) {
         setError(
           'Please provide resume text and a job description, or upload a file.'
@@ -181,7 +200,13 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
             }}
           ></div>
         </div>
+          {warning && (
+          <div className="mt-3 text-xs sm:text-sm text-yellow-800 bg-yellow-100 border border-yellow-300 px-3 py-2 rounded">
+            {warning}
+          </div>
+        )}
       </div>
+      
 
       {/* Main card */}
       <div className="bg-white shadow rounded-lg p-6">
