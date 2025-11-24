@@ -16,7 +16,7 @@ class Analysis(BaseModel):
     skills_required: List[str]
     matched_skills: List[str]
     missing_skills: List[str]
-    fit_score: int
+    matched_pct: Optional[float] = None
     evidence: Dict[str, List[str]]
 
 class Style(BaseModel):
@@ -49,6 +49,7 @@ PROMPT_SYS = (
 )
 
 def build_prompt(analysis: Analysis, style: Style, role_hint: str|None) -> str:
+    match_pct = getattr(analysis, 'matched_pct', None) or ''
     return f"""SYSTEM:
 {PROMPT_SYS}
 
@@ -57,7 +58,7 @@ skills_detected: {analysis.skills_detected}
 skills_required: {analysis.skills_required}
 matched_skills: {analysis.matched_skills}
 missing_skills: {analysis.missing_skills}
-matched_pct: {analysis.matched_pct}
+    matched_pct: {match_pct}
 evidence.resume_snippets: {analysis.evidence.get('resume_snippets', [])}
 evidence.job_snippets: {analysis.evidence.get('job_snippets', [])}
 role_hint: {role_hint or ''}
