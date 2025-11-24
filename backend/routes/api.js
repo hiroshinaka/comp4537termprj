@@ -5,14 +5,13 @@ const db_users = include('database/dbQueries/userQuery');
 
 const { extractTextFromFile } = include('utils/documentParser');
 const { authenticateToken, adminAuthorization } = include('middleware/auth');
-const { trackUsage, FREE_REQUESTS } = include('middleware/usage');
+const { FREE_REQUESTS } = include('middleware/usage');
 // Mount modular routers
 const analyzerRouter = require('./analyzer');
 const suggestionsRouter = require('./suggestions');
 
 // All routes under api require authentication and are tracked by default
 router.use(authenticateToken);
-router.use(trackUsage);
 
 // Mount modular sub-routers under logical paths
 // Keep analyzer mounted at both `/analyzer` and root for backward-compatibility
@@ -25,13 +24,23 @@ router.use('/suggestions', suggestionsRouter);
 router.get('/me/usage', async (req, res) => {
   try {
     const totalRequests = await db_users.getUserTotalRequests(req.user.user_id);
-    res.json({ success: true, usage: { totalRequests, freeLimit: FREE_REQUESTS, overFreeLimit: totalRequests > FREE_REQUESTS } });
+    res.json({
+      success: true,
+      usage: {
+        totalRequests,
+        freeLimit: FREE_REQUESTS,
+        overFreeLimit: totalRequests > FREE_REQUESTS,
+      },
+    });
   } catch (err) {
     console.error('/api/me/usage error:', err && (err.message || err));
     res.status(500).json({ success: false, error: 'Failed to fetch usage' });
   }
 });
 
+router.use('/analyzer', analyzerRouter);
+router.use('/', analyzerRouter);           // legacy /api/analyze
+router.use('/suggestions', suggestionsRouter);
 /**
  * @swagger
  * /api/me/usage:
