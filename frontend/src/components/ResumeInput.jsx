@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
 const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
@@ -14,6 +14,13 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   const [warning, setWarning] = useState(null);
 
   const handleFileChange = (e) => setSelectedFile(e.target.files?.[0] || null);
+  const fileInputRef = useRef(null);
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null);
+    // reset native input so the same file can be re-selected later
+    if (fileInputRef.current) fileInputRef.current.value = null;
+  };
 
   const applyUsage = (usage) => {
     if (!usage) return;
@@ -173,14 +180,22 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
               Upload resume (optional)
             </label>
             <input
+              ref={fileInputRef}
               type="file"
               accept=".pdf,.doc,.docx,.txt"
               onChange={handleFileChange}
               className="block w-full text-sm text-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700"
             />
             {selectedFile && (
-              <div className="mt-2 text-sm text-slate-500">
-                Selected: {selectedFile.name}
+              <div className="mt-2 flex items-center gap-3">
+                <div className="text-sm text-slate-500">Selected: {selectedFile.name}</div>
+                <button
+                  type="button"
+                  onClick={handleRemoveFile}
+                  className="text-sm text-red-600 hover:text-red-800 bg-red-50 border border-red-100 px-2 py-1 rounded"
+                >
+                  Remove resume
+                </button>
               </div>
             )}
           </div>
@@ -193,9 +208,13 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
               value={resume}
               onChange={(e) => setResume(e.target.value)}
               rows={8}
-              className="w-full rounded border border-slate-200 p-3 text-sm focus:ring-1 focus:ring-slate-400"
-              placeholder="Paste your resume text here (optional if uploading file)"
+              disabled={!!selectedFile}
+              className={`w-full rounded border p-3 text-sm focus:ring-1 focus:ring-slate-400 ${selectedFile ? 'bg-slate-50 opacity-80 cursor-not-allowed border-slate-100' : 'border-slate-200'}`}
+              placeholder={selectedFile ? 'Disabled because a file is selected. Remove the file to paste resume text.' : 'Paste your resume text here (optional if uploading file)'}
             />
+            {selectedFile && (
+              <div className="mt-1 text-xs text-slate-500">Resume paste disabled while a file is selected.</div>
+            )}
           </div>
 
           <div>
