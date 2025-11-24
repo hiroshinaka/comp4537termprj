@@ -77,7 +77,7 @@ def analyze(inp:AnalyzeIn):
     coverage = 0.0
 
     # skill overlap
-    matched_pct = len(matched) / max(1, len(skills_job))
+    matched_pct = len(matched) / max(1, len(skills_job)) * 100
 
     # crude evidence (short spans)
     def snippets(txt, keys):
@@ -92,7 +92,7 @@ def analyze(inp:AnalyzeIn):
         "skills_detected": skills_res,
         "skills_required": skills_job,
         "matched_skills": matched,
-        "matches_pct": matched_pct,
+        "matched_pct": matched_pct,
         "missing_skills": missing,
         "evidence": {
             "resume_snippets": snippets(resume_text, matched),
