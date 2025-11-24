@@ -1,31 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
-const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
-const ANALYZE_URL = API_BASE
-  ? `${API_BASE.replace(/\/$/, '')}/api/analyzer/analyze`
-  : '/api/analyzer/analyze';
+const API_BASE = process.env.REACT_APP_API_URL || '';
+
 export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null); // will now hold suggestions response
+  const [analysisResult, setAnalysisResult] = useState(null); // will hold suggestions response
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [apiUsage, setApiUsage] = useState({ totalRequests: 0, freeLimit: 20, overFreeLimit: false });
-  const [warning, setWarning] = useState(null);
+  const [apiUsage, setApiUsage] = useState({
+    totalRequests: 0,
+    freeLimit: 100,
+  });
 
   const fileInputRef = useRef(null);
 
-  const handleFileChange = (e) => setSelectedFile(e.target.files?.[0] || null);
+  const handleFileChange = (e) => {
+    const file = e && e.target && e.target.files ? e.target.files[0] : null;
+    setSelectedFile(file || null);
+  };
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
     // reset native input so the same file can be re-selected later
-    if (fileInputRef.current) fileInputRef.current.value = null;
+    if (fileInputRef.current) {
+      fileInputRef.current.value = null;
+    }
   };
 
-  // ✅ Leave API usage mock as-is
+  // Leave API usage mock as-is
   useEffect(() => {
     const mockData = {
       totalRequests: Math.floor(Math.random() * 50) + 10,
@@ -36,11 +41,11 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   }, []);
 
   const analyzeUrl = API_BASE
-    ? `${API_BASE.replace(/\/$/, '')}/api/analyze`
+    ? API_BASE.replace(/\/$/, '') + '/api/analyze'
     : '/api/analyze';
 
   const suggestUrl = API_BASE
-    ? `${API_BASE.replace(/\/$/, '')}/api/suggest`
+    ? API_BASE.replace(/\/$/, '') + '/api/suggest'
     : '/api/suggest';
 
   // Call /api/analyze with FormData (file upload)
@@ -52,7 +57,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || `HTTP ${res.status}`);
+      throw new Error(text || 'HTTP ' + res.status);
     }
     return res.json();
   };
@@ -67,7 +72,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || `HTTP ${res.status}`);
+      throw new Error(text || 'HTTP ' + res.status);
     }
     return res.json();
   };
@@ -80,20 +85,22 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
       credentials: 'include',
       body: JSON.stringify({
         analysis: analysisObj,
-        // you can add style / role_hint here if you want to override defaults:
+        // You can add style / role_hint if you want to override defaults:
         // style: { bullets: 7, max_words: 200, tone: 'professional' },
         // role_hint: 'backend developer',
       }),
     });
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || `HTTP ${res.status}`);
+      throw new Error(text || 'HTTP ' + res.status);
     }
     return res.json();
   };
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
+    if (e) {
+      e.preventDefault();
+    }
     setError(null);
     setAnalysisResult(null);
     setLoading(true);
@@ -119,16 +126,14 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
         analyzeData = await submitToAnalyzeJson({ resume, job });
       }
 
-      // Try to read analysis from { analysis } or fallback to whole object
       const analysisObj = analyzeData.analysis || analyzeData;
 
       // ---------- STEP 2: /api/suggest ----------
       const suggestionsData = await submitToSuggestions(analysisObj);
 
-      // Store full suggestions response; SuggestionsPanel will get suggestionsData.suggestions
+      // Store full suggestions response
       setAnalysisResult(suggestionsData);
 
-      // Notify parent if needed
       if (typeof onAnalyze === 'function') {
         onAnalyze({
           resume: selectedFile ? undefined : resume,
@@ -163,7 +168,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
           <div className="text-right">
             <div className="text-xs text-slate-500 mb-1">Remaining</div>
             <div className="text-lg font-semibold text-blue-600">
-              {Math.max(apiUsage.freeLimit - apiUsage.totalRequests, 0)}
+              {apiUsage.freeLimit - apiUsage.totalRequests}
             </div>
           </div>
         </div>
@@ -171,19 +176,14 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
           <div
             className="bg-blue-600 h-full transition-all duration-300"
             style={{
-              width: `${Math.min(
-                (apiUsage.totalRequests / apiUsage.freeLimit) * 100,
-                100
-              )}%`,
+              width:
+                Math.min(
+                  (apiUsage.totalRequests / apiUsage.freeLimit) * 100,
+                  100
+                ) + '%',
             }}
           ></div>
         </div>
-
-        {warning && (
-          <div className="mt-3 text-xs sm:text-sm text-yellow-800 bg-yellow-100 border border-yellow-300 px-3 py-2 rounded">
-            {warning}
-          </div>
-        )}
       </div>
 
       {/* Main card */}
@@ -241,11 +241,12 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
               onChange={(e) => setResume(e.target.value)}
               rows={8}
               disabled={!!selectedFile}
-              className={`w-full rounded border p-3 text-sm focus:ring-1 focus:ring-slate-400 ${
-                selectedFile
+              className={
+                'w-full rounded border p-3 text-sm focus:ring-1 focus:ring-slate-400 ' +
+                (selectedFile
                   ? 'bg-slate-50 opacity-80 cursor-not-allowed border-slate-100'
-                  : 'border-slate-200'
-              }`}
+                  : 'border-slate-200')
+              }
               placeholder={
                 selectedFile
                   ? 'Disabled because a file is selected. Remove the file to paste resume text.'
@@ -299,10 +300,9 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
                   <path
                     className="opacity-75"
                     fill="currentColor"
-                    d="M4 12a8 8 0 018-8v8z"
-                  ></path>
+                    d="M4 12a8 8 0 018-8v8z"></path>
                 </svg>
-              )}
+              ) : null}
               Analyze
             </button>
           </div>
