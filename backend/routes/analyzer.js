@@ -11,7 +11,7 @@ const upload = multer({
 });
 
 const ANALYZER_TIMEOUT = 30000;
-router.post('/analyze', upload.single('resume'), async (req, res) => {
+router.post('/analyzer', upload.single('resume'), async (req, res) => {
   try {
     const jobText = req.body.job || req.body.jobText || '';
     let extractedText = '';

@@ -57,13 +57,13 @@ export default function SuggestionsPanel({ suggestions, loading }) {
   // -----------------------------
   // Normalize shape: handle { success, suggestions } from API
   // -----------------------------
-  const payload =
+  let structured =
     suggestions && typeof suggestions === 'object' && 'suggestions' in suggestions
       ? suggestions.suggestions
       : suggestions;
 
-  // If backend ever returns a plain string / array, just pretty-print it.
-  if (typeof payload === 'string' || Array.isArray(payload)) {
+  // If backend returns a plain string, pretty-print it.
+  if (typeof structured === 'string') {
     return (
       <section className="mt-6">
         <header className="mb-3 flex items-center gap-2">
@@ -73,18 +73,66 @@ export default function SuggestionsPanel({ suggestions, loading }) {
           </h3>
         </header>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-          <pre className="whitespace-pre-wrap text-sm text-slate-800">
-            {typeof payload === 'string'
-              ? payload
-              : JSON.stringify(payload, null, 2)}
-          </pre>
+          <pre className="whitespace-pre-wrap text-sm text-slate-800">{structured}</pre>
         </div>
       </section>
     );
   }
 
+  // If backend returned a flat array of strings, try to convert it into a
+  // structured object (summary + suggestions). This handles cases where the
+  // LLM returned a simple numbered list with heading markers like
+  // ["Professional Summary:", "text...", "Improvement Suggestions:", "..."].
+  if (Array.isArray(structured) && structured.every((p) => typeof p === 'string')) {
+    const headingRegexLocal = /^\s*(professional summary|summary|improvement suggestions?|improvements?)\s*:?\s*$/i;
+    let mode = null;
+    let parsed = { summary: '', suggestions: [] };
+    for (const item of structured) {
+      const t = item.trim();
+      if (headingRegexLocal.test(t)) {
+        const key = t.toLowerCase();
+        if (key.includes('summary')) mode = 'summary';
+        else if (key.includes('improv') || key.includes('improvement')) mode = 'suggestions';
+        else mode = null;
+        continue;
+      }
+      if (!mode) {
+        // If no explicit heading, heuristically decide: first long paragraph -> summary
+        if (!parsed.summary && t.length > 80) {
+          parsed.summary = t;
+        } else {
+          parsed.suggestions.push(t.replace(/^[-•*\d.)\s]+/, '').trim());
+        }
+      } else if (mode === 'summary') {
+        parsed.summary = parsed.summary ? parsed.summary + '\n' + t : t;
+      } else if (mode === 'suggestions') {
+        parsed.suggestions.push(t.replace(/^[-•*\d.)\s]+/, '').trim());
+      }
+    }
+
+    // If we successfully parsed something useful, use it as the payload
+    if (parsed.summary || parsed.suggestions.length > 0) {
+      // replace payload with parsed object so downstream rendering handles it
+      // (we use the same `result` variable later)
+      structured = parsed;
+    } else {
+      // fallback to raw print
+      return (
+        <section className="mt-6">
+          <header className="mb-3 flex items-center gap-2">
+            <SparklesIcon className="h-5 w-5 text-indigo-500" />
+            <h3 className="text-lg font-semibold text-slate-900">{MSG['suggestions']}</h3>
+          </header>
+          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <pre className="whitespace-pre-wrap text-sm text-slate-800">{JSON.stringify(structured, null, 2)}</pre>
+          </div>
+        </section>
+      );
+    }
+  }
+
   // From here on, we assume `payload` is an object with the fields from the LLM
-  const result = payload || {};
+  const result = structured || {};
 
   // -----------------------------
   // Normalized fields from backend
@@ -110,7 +158,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
     : [];
 
   const headingRegex =
-    /^\s*\d*[\.\)]?\s*(professional summary|summary|improvement suggestions?|improvements?)\s*:?\s*$/i;
+    /^\s*\d*[.)]?\s*(professional summary|summary|improvement suggestions?|improvements?)\s*:?\s*$/i;
 
   const bullets = rawBullets
     .filter((item) => typeof item === 'string' && item.trim().length > 0)

@@ -58,7 +58,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   }, []);
 
 
-  const analyzeUrl = API_BASE + '/api/analyze'
+  const analyzeUrl = API_BASE + '/api/analyzer'
 
   const suggestUrl = API_BASE + '/api/suggestions'
 
