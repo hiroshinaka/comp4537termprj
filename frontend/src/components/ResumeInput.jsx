@@ -45,8 +45,8 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     : '/analyze';
 
   const suggestUrl = API_BASE
-    ? API_BASE.replace(/\/$/, '') + '/api/suggestions'
-    : '/suggestions';
+    ? API_BASE.replace(/\/$/, '') + '/api/suggest'
+    : '/api/suggest';
 
   // Call /api/analyze with FormData (file upload)
   const submitToAnalyzeForm = async (form) => {
