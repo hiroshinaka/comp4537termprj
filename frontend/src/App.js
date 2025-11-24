@@ -7,7 +7,7 @@ import ResumeInput from './components/ResumeInput';
 import AdminDashboard from './components/AdminDashboard';
 import MSG from './lang/en/messages.js';
 
-const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:4000').replace(/\/$/, '');
+const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:4000');
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -163,7 +163,7 @@ function App() {
               form.append('resume', payload.resumeFile);
               form.append('job', payload.job || '');
 
-              const res = await fetch(`${API_BASE}/analyzer`, {
+              const res = await fetch(`${API_BASE}/api/analyzer`, {
                 method: 'POST',
                 credentials: 'include',
                 body: form,
