@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
-const API_BASE = process.env.REACT_APP_API_URL || ' https://sea-lion-app-3wol8.ondigitalocean.app';
+const API_BASE = process.env.REACT_APP_API_URL || 'https://sea-lion-app-3wol8.ondigitalocean.app';
 
 export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
