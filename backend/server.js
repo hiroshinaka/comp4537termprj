@@ -73,4 +73,4 @@ app.use('/api-docs',swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.listen(port, () => console.log(`API running on port ${port}`));
-server.setTimeout(300000);
+app.setTimeout(300000);
