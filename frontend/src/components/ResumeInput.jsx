@@ -90,7 +90,9 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   };
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
+    if (e) {
+      e.preventDefault();
+    }
     setError(null);
     setAnalysisResult(null);
     setLoading(true);
