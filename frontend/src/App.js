@@ -5,6 +5,7 @@ import Signup from './components/Signup';
 import Landing from './components/Landing';
 import ResumeInput from './components/ResumeInput';
 import AdminDashboard from './components/AdminDashboard';
+import Profile from './components/Profile';
 import MSG from './lang/en/messages.js';
 
 const API_BASE = (process.env.REACT_APP_API_URL || 'http://localhost:4000').replace(/\/$/, '');
@@ -142,6 +143,15 @@ function App() {
     );
   }
 
+  if (view === 'profile') {
+    return (
+      <Profile
+        onLogout={handleLogout}
+        onBackToResume={() => setView('resume')}
+      />
+    );
+  }
+
   return (
     <div>
       {userType === 'admin' && (
@@ -198,6 +208,7 @@ function App() {
           }
         }}
         onLogout={handleLogout}
+        onProfile={() => setView('profile')}
       />
     </div>
   );
