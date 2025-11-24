@@ -11,12 +11,10 @@ const suggestionsRouter = require('./suggestions');
 
 // All routes under /api require authentication and usage tracking
 router.use(authenticateToken);
-router.use(trackUsage);
 
 // Analyzer + suggestions sub-routers
-router.use('/analyzer', analyzerRouter);
-router.use('/', analyzerRouter); // legacy: /api/analyze
-router.use('/suggestions', suggestionsRouter);
+router.use('/analyzer',trackUsage, analyzerRouter);
+router.use('/suggestions', trackUsage, suggestionsRouter);
 
 // ---------------------------------------------------------
 // Usage summary for current user

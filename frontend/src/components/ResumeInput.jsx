@@ -2,7 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import SuggestionsPanel from './SuggestionsPanel';
 
 const API_BASE = (process.env.REACT_APP_API_URL || '').replace(/\/$/, '');
-
+const ANALYZE_URL = API_BASE
+  ? `${API_BASE.replace(/\/$/, '')}/api/analyzer/analyze`
+  : '/api/analyzer/analyze';
 export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
@@ -57,11 +59,10 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   }, []);
 
   const submitToServer = async (form) => {
-    const url = `${API_BASE}/api/analyze`;
-    const res = await fetch(url, {
-      method: 'POST',
-      body: form,
-      credentials: 'include',
+    const res = await fetch(ANALYZE_URL, {
+    method: 'POST',
+    body: form,
+    credentials: 'include',
     });
     if (!res.ok) {
       const text = await res.text();
@@ -98,11 +99,11 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
         return;
       }
 
-      const resp = await fetch(`${API_BASE}/api/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ resume, job }),
+      const resp = await fetch(ANALYZE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ resume, job }),
       });
       if (!resp.ok) {
         const text = await resp.text();
