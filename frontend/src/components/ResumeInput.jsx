@@ -3,7 +3,7 @@ import SuggestionsPanel from './SuggestionsPanel';
 
 const API_BASE = process.env.REACT_APP_API_URL || 'https://sea-lion-app-3wol8.ondigitalocean.app';
 
-export default function ResumeInput({ onAnalyze, onLogout }) {
+export default function ResumeInput({ onAnalyze, onLogout, onProfile }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
@@ -214,14 +214,24 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
           <h2 className="text-2xl font-semibold text-slate-900">
             Resume Analyzer
           </h2>
-          {onLogout && (
-            <button
-              onClick={onLogout}
-              className="text-sm text-slate-600 hover:text-slate-800 border border-slate-200 px-3 py-1 rounded"
-            >
-              Logout
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {onProfile && (
+              <button
+                onClick={onProfile}
+                className="text-sm text-slate-600 hover:text-slate-800 border border-slate-200 px-3 py-1 rounded"
+              >
+                Profile
+              </button>
+            )}
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="text-sm text-slate-600 hover:text-slate-800 border border-slate-200 px-3 py-1 rounded"
+              >
+                Logout
+              </button>
+            )}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
