@@ -64,14 +64,11 @@ const api = require('./routes/api');
 app.use('/api', api);
 
 
-app.post('/analyze', (req, res, next) => {
-  req.url = '/analyze';
-  api(req, res, next);
-});
-app.post('/suggestion', (req, res, next) => {
-  req.url = '/suggestions';
-  api(req, res, next);
-});
+const analyzerRouter = require('./routes/analyzer'); 
+const suggestRouter = require('./routes/suggestions');
+
+app.use('/api', analyzerRouter);
+app.use('/api', suggestRouter);
 
 app.use('/api-docs',swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
