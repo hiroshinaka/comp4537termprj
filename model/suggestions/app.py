@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import os
 import requests
+
 
 # ---------- Ollama config ----------
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
@@ -21,10 +22,8 @@ class Analysis(BaseModel):
     matched_pct: Optional[float] = None
     matches_pct: Optional[float] = None
     fit_score: Optional[int] = None
-    evidence: Dict[str, any]
-    meta: Optional[Dict[str, any]] = {}
-
-app = FastAPI()
+    evidence: Dict[str, Any]
+    meta: Optional[Dict[str, Any]] = {}
 
 class Analysis(BaseModel):
     skills_detected: List[str]
