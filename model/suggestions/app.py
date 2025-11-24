@@ -23,20 +23,8 @@ class Analysis(BaseModel):
     matches_pct: Optional[float] = None
     fit_score: Optional[int] = None
     evidence: Dict[str, Any]
-    meta: Optional[Dict[str, Any]] = {}
+    meta: Optional[Dict[str, Any]] = None
 
-class Analysis(BaseModel):
-    skills_detected: List[str]
-    skills_required: List[str]
-    matched_skills: List[str]
-    missing_skills: List[str]
-    # analyzer may send either `matched_pct` (percent, e.g. 75.0)
-    # or `matches_pct` (fraction, e.g. 0.75). Accept both.
-    matched_pct: Optional[float] = None
-    matches_pct: Optional[float] = None
-    # integer fit score (0-100) — optional
-    fit_score: Optional[int] = None
-    evidence: Dict[str, List[str]]
 
 class Style(BaseModel):
     bullets: int = 7
