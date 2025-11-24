@@ -163,7 +163,7 @@ function App() {
               form.append('resume', payload.resumeFile);
               form.append('job', payload.job || '');
 
-              const res = await fetch(`${API_BASE}/api/analyzer`, {
+              const res = await fetch(`${API_BASE}/analyze`, {
                 method: 'POST',
                 credentials: 'include',
                 body: form,
