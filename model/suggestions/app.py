@@ -156,7 +156,13 @@ def suggest(inp: SuggestIn):
     out_text = call_ollama(prompt)
     suggestions = extract_bullets(out_text, inp.style.bullets)
 
+    # Return the generated suggestions plus a small set of normalized analysis
+    # metadata so the frontend can render match % and matched/missing skills.
     return {
         "suggestions": suggestions,
+        "matched_pct": inp.analysis.matched_pct,
+        "fit_score": inp.analysis.fit_score,
+        "matched_skills": inp.analysis.matched_skills,
+        "missing_skills": inp.analysis.missing_skills,
         "disclaimer": "Only include truthful experience; do not fabricate.",
     }
