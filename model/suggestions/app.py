@@ -28,7 +28,7 @@ class Analysis(BaseModel):
 
 class Style(BaseModel):
     bullets: int = 7
-    max_words: int = 200
+    max_words: int = 1000
     tone: str = "professional"
 
 class SuggestIn(BaseModel):
