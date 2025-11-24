@@ -17,6 +17,7 @@ if (process.env.NODE_ENV === 'production') {
   app.set('trust proxy', 1);
 }
 
+
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -72,3 +73,4 @@ app.use('/api-docs',swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.use((req, res) => res.status(404).json({ error: 'Not found' }));
 app.listen(port, () => console.log(`API running on port ${port}`));
+server.setTimeout(300000);

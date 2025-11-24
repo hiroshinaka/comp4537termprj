@@ -11,7 +11,7 @@ const options ={
         },
         servers: [
             {
-                url: 'https://comp4537termprj.vercel.app/',
+                url: 'https://sea-lion-app-3wol8.ondigitalocean.app/',
                 description: 'Development server',
             },
         ],
