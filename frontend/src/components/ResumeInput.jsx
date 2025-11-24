@@ -7,12 +7,12 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null); // will hold suggestions response
+  const [analysisResult, setAnalysisResult] = useState(null); 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [apiUsage, setApiUsage] = useState({
     totalRequests: 0,
-    freeLimit: 100,
+    freeLimit: 20,
   });
 
   const fileInputRef = useRef(null);
@@ -30,23 +30,19 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     }
   };
 
-  // Leave API usage mock as-is
   useEffect(() => {
     const mockData = {
       totalRequests: Math.floor(Math.random() * 50) + 10,
-      freeLimit: 100,
+      freeLimit: 20,
       overFreeLimit: false,
     };
     setApiUsage(mockData);
   }, []);
 
-  const analyzeUrl = API_BASE
-    ? API_BASE.replace(/\/$/, '') + '/api/analyze'
-    : '/api/analyze';
+  const analyzeUrl = API_BASE + '/api/analyze'
 
-  const suggestUrl = API_BASE
-    ? API_BASE.replace(/\/$/, '') + '/api/suggestions'
-    : '/api/suggestion';
+  const suggestUrl = API_BASE + '/api/suggestions'
+
 
 
   // Call /api/analyze with FormData (file upload)
