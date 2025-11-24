@@ -7,13 +7,14 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   const [resume, setResume] = useState('');
   const [job, setJob] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
-  const [analysisResult, setAnalysisResult] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null); // will now hold suggestions response
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [apiUsage, setApiUsage] = useState({ totalRequests: 0, freeLimit: 100 });
 
-  const handleFileChange = (e) => setSelectedFile(e.target.files?.[0] || null);
   const fileInputRef = useRef(null);
+
+  const handleFileChange = (e) => setSelectedFile(e.target.files?.[0] || null);
 
   const handleRemoveFile = () => {
     setSelectedFile(null);
@@ -21,19 +22,66 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     if (fileInputRef.current) fileInputRef.current.value = null;
   };
 
-  // TODO: link this to backend later for fetching API limit usage
+  // ✅ Leave API usage mock as-is
   useEffect(() => {
     const mockData = {
       totalRequests: Math.floor(Math.random() * 50) + 10,
       freeLimit: 100,
-      overFreeLimit: false
+      overFreeLimit: false,
     };
     setApiUsage(mockData);
   }, []);
 
-  const submitToServer = async (form) => {
-    const url = API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/analyze` : '/api/analyze';
-    const res = await fetch(url, { method: 'POST', body: form, credentials: 'include' });
+  const analyzeUrl = API_BASE
+    ? `${API_BASE.replace(/\/$/, '')}/api/analyze`
+    : '/api/analyze';
+
+  const suggestUrl = API_BASE
+    ? `${API_BASE.replace(/\/$/, '')}/api/suggest`
+    : '/api/suggest';
+
+  // Call /api/analyze with FormData (file upload)
+  const submitToAnalyzeForm = async (form) => {
+    const res = await fetch(analyzeUrl, {
+      method: 'POST',
+      body: form,
+      credentials: 'include',
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    return res.json();
+  };
+
+  // Call /api/analyze with JSON (pasted resume)
+  const submitToAnalyzeJson = async (payload) => {
+    const res = await fetch(analyzeUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    return res.json();
+  };
+
+  // Call /api/suggest with the analysis object
+  const submitToSuggestions = async (analysisObj) => {
+    const res = await fetch(suggestUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        analysis: analysisObj,
+        // you can add style / role_hint here if you want to override defaults:
+        // style: { bullets: 7, max_words: 200, tone: 'professional' },
+        // role_hint: 'backend developer',
+      }),
+    });
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `HTTP ${res.status}`);
@@ -48,38 +96,47 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     setLoading(true);
 
     try {
+      // Validation for text-only mode
+      if (!selectedFile && (!resume || !job)) {
+        setError(
+          'Please provide resume text and a job description, or upload a file.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      // ---------- STEP 1: /api/analyze ----------
+      let analyzeData;
       if (selectedFile) {
         const form = new FormData();
         form.append('resume', selectedFile);
         form.append('job', job || '');
-        const data = await submitToServer(form);
-        setAnalysisResult(data);
-        if (typeof onAnalyze === 'function') onAnalyze({ resumeFile: selectedFile, job });
-        setLoading(false);
-        return;
+        analyzeData = await submitToAnalyzeForm(form);
+      } else {
+        analyzeData = await submitToAnalyzeJson({ resume, job });
       }
 
-      if (!resume || !job) {
-        setError('Please provide resume text and a job description, or upload a file.');
-        setLoading(false);
-        return;
-      }
+      // Try to read analysis from { analysis } or fallback to whole object
+      const analysisObj = analyzeData.analysis || analyzeData;
 
-      const resp = await fetch(API_BASE ? `${API_BASE.replace(/\/$/, '')}/api/analyze` : '/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ resume, job }),
-      });
-      if (!resp.ok) {
-        const text = await resp.text();
-        throw new Error(text || `HTTP ${resp.status}`);
+      // ---------- STEP 2: /api/suggest ----------
+      const suggestionsData = await submitToSuggestions(analysisObj);
+
+      // Store full suggestions response; SuggestionsPanel will get suggestionsData.suggestions
+      setAnalysisResult(suggestionsData);
+
+      // Notify parent if needed
+      if (typeof onAnalyze === 'function') {
+        onAnalyze({
+          resume: selectedFile ? undefined : resume,
+          resumeFile: selectedFile || null,
+          job,
+          analysis: analysisObj,
+          suggestions: suggestionsData,
+        });
       }
-      const data = await resp.json();
-      setAnalysisResult(data);
-      if (typeof onAnalyze === 'function') onAnalyze({ resume, job });
     } catch (err) {
-      console.error('Analyze failed', err);
+      console.error('Analyze / suggest failed', err);
       setError(err.message || String(err));
     } finally {
       setLoading(false);
@@ -88,12 +145,16 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
+      {/* API Usage (unchanged) */}
       <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-4 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-sm font-medium text-slate-700">API Usage</h3>
             <p className="text-2xl font-bold text-slate-900 mt-1">
-              {apiUsage.totalRequests} <span className="text-sm font-normal text-slate-500">/ {apiUsage.freeLimit} requests</span>
+              {apiUsage.totalRequests}{' '}
+              <span className="text-sm font-normal text-slate-500">
+                / {apiUsage.freeLimit} requests
+              </span>
             </p>
           </div>
           <div className="text-right">
@@ -104,16 +165,24 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
           </div>
         </div>
         <div className="mt-3 bg-slate-200 rounded-full h-2 overflow-hidden">
-          <div 
+          <div
             className="bg-blue-600 h-full transition-all duration-300"
-            style={{ width: `${Math.min((apiUsage.totalRequests / apiUsage.freeLimit) * 100, 100)}%` }}
+            style={{
+              width: `${Math.min(
+                (apiUsage.totalRequests / apiUsage.freeLimit) * 100,
+                100
+              )}%`,
+            }}
           ></div>
         </div>
       </div>
 
+      {/* Main card */}
       <div className="bg-white shadow rounded-lg p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-semibold text-slate-900">Resume Analyzer</h2>
+          <h2 className="text-2xl font-semibold text-slate-900">
+            Resume Analyzer
+          </h2>
           {onLogout && (
             <button
               onClick={onLogout}
@@ -125,8 +194,11 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* File upload */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Upload resume (optional)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Upload resume (optional)
+            </label>
             <input
               ref={fileInputRef}
               type="file"
@@ -136,7 +208,9 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
             />
             {selectedFile && (
               <div className="mt-2 flex items-center gap-3">
-                <div className="text-sm text-slate-500">Selected: {selectedFile.name}</div>
+                <div className="text-sm text-slate-500">
+                  Selected: {selectedFile.name}
+                </div>
                 <button
                   type="button"
                   onClick={handleRemoveFile}
@@ -148,23 +222,39 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
             )}
           </div>
 
+          {/* Resume paste */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Resume (paste)</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Resume (paste)
+            </label>
             <textarea
               value={resume}
               onChange={(e) => setResume(e.target.value)}
               rows={8}
               disabled={!!selectedFile}
-              className={`w-full rounded border p-3 text-sm focus:ring-1 focus:ring-slate-400 ${selectedFile ? 'bg-slate-50 opacity-80 cursor-not-allowed border-slate-100' : 'border-slate-200'}`}
-              placeholder={selectedFile ? 'Disabled because a file is selected. Remove the file to paste resume text.' : 'Paste your resume text here (optional if uploading file)'}
+              className={`w-full rounded border p-3 text-sm focus:ring-1 focus:ring-slate-400 ${
+                selectedFile
+                  ? 'bg-slate-50 opacity-80 cursor-not-allowed border-slate-100'
+                  : 'border-slate-200'
+              }`}
+              placeholder={
+                selectedFile
+                  ? 'Disabled because a file is selected. Remove the file to paste resume text.'
+                  : 'Paste your resume text here (optional if uploading file)'
+              }
             />
             {selectedFile && (
-              <div className="mt-1 text-xs text-slate-500">Resume paste disabled while a file is selected.</div>
+              <div className="mt-1 text-xs text-slate-500">
+                Resume paste disabled while a file is selected.
+              </div>
             )}
           </div>
 
+          {/* Job description */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Job description</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Job description
+            </label>
             <textarea
               value={job}
               onChange={(e) => setJob(e.target.value)}
@@ -180,12 +270,28 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
             <button
               type="submit"
               disabled={loading}
-              className={`inline-flex items-center px-4 py-2 rounded-md text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed`}
+              className="inline-flex items-center px-4 py-2 rounded-md text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? (
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-5 w-5 text-white"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8z"
+                  ></path>
                 </svg>
               ) : null}
               Analyze
@@ -194,7 +300,15 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
         </form>
       </div>
 
-      <SuggestionsPanel suggestions={analysisResult && analysisResult.suggestions ? analysisResult.suggestions : analysisResult} loading={loading} />
+      {/* Suggestions */}
+      <SuggestionsPanel
+        suggestions={
+          analysisResult && analysisResult.suggestions
+            ? analysisResult.suggestions
+            : analysisResult
+        }
+        loading={loading}
+      />
     </div>
   );
 }

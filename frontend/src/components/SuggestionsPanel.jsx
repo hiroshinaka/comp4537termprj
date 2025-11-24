@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/solid';
 
 function SkeletonLine() {
-  return <div className="h-4 w-full rounded bg-slate-200 mb-2 animate-pulse" />;
+  return <div className="mb-2 h-4 w-full animate-pulse rounded bg-slate-200" />;
 }
 
 export default function SuggestionsPanel({ suggestions, loading }) {
@@ -17,7 +17,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
   if (loading) {
     return (
       <section className="mt-6">
-        <div className="flex items-center gap-2 mb-3 text-slate-700 text-sm">
+        <div className="mb-3 flex items-center gap-2 text-sm text-slate-700">
           <svg
             className="h-4 w-4 animate-spin text-slate-700"
             viewBox="0 0 24 24"
@@ -43,7 +43,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
           <SkeletonLine />
           <SkeletonLine />
           <SkeletonLine />
-          <div className="grid grid-cols-2 gap-3 mt-2">
+          <div className="mt-2 grid grid-cols-2 gap-3">
             <SkeletonLine />
             <SkeletonLine />
           </div>
@@ -54,11 +54,19 @@ export default function SuggestionsPanel({ suggestions, loading }) {
 
   if (!suggestions) return null;
 
+  // -----------------------------
+  // Normalize shape: handle { success, suggestions } from API
+  // -----------------------------
+  const payload =
+    suggestions && typeof suggestions === 'object' && 'suggestions' in suggestions
+      ? suggestions.suggestions
+      : suggestions;
+
   // If backend ever returns a plain string / array, just pretty-print it.
-  if (typeof suggestions === 'string' || Array.isArray(suggestions)) {
+  if (typeof payload === 'string' || Array.isArray(payload)) {
     return (
       <section className="mt-6">
-        <header className="flex items-center gap-2 mb-3">
+        <header className="mb-3 flex items-center gap-2">
           <SparklesIcon className="h-5 w-5 text-indigo-500" />
           <h3 className="text-lg font-semibold text-slate-900">
             {MSG['suggestions']}
@@ -66,23 +74,23 @@ export default function SuggestionsPanel({ suggestions, loading }) {
         </header>
         <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
           <pre className="whitespace-pre-wrap text-sm text-slate-800">
-            {typeof suggestions === 'string'
-              ? suggestions
-              : JSON.stringify(suggestions, null, 2)}
+            {typeof payload === 'string'
+              ? payload
+              : JSON.stringify(payload, null, 2)}
           </pre>
         </div>
       </section>
     );
   }
 
+  // From here on, we assume `payload` is an object with the fields from the LLM
+  const result = payload || {};
+
   // -----------------------------
   // Normalized fields from backend
   // -----------------------------
   const matchRaw =
-    suggestions.matched_pct ??
-    suggestions.match_pct ??
-    suggestions.fit_score ??
-    0;
+    result.matched_pct ?? result.match_pct ?? result.fit_score ?? 0;
 
   const matchPercent = Math.round(
     typeof matchRaw === 'number'
@@ -90,29 +98,30 @@ export default function SuggestionsPanel({ suggestions, loading }) {
       : parseFloat(String(matchRaw).replace('%', '')) || 0
   );
 
-  const summaryText = (suggestions.summary || '').trim();
+  const summaryText = (result.summary || '').trim();
 
-  // Raw bullets from backend
-  const rawBullets = Array.isArray(suggestions.suggestions)
-    ? suggestions.suggestions
+  // Prefer `suggestions` array, but be flexible with `bullets` or `items`
+  const rawBullets = Array.isArray(result.suggestions)
+    ? result.suggestions
+    : Array.isArray(result.bullets)
+    ? result.bullets
+    : Array.isArray(result.items)
+    ? result.items
     : [];
 
-  // Remove headings like "Professional Summary:" / "Improvement Suggestions:"
   const headingRegex =
     /^\s*\d*[\.\)]?\s*(professional summary|summary|improvement suggestions?|improvements?)\s*:?\s*$/i;
 
   const bullets = rawBullets
     .filter((item) => typeof item === 'string' && item.trim().length > 0)
     .filter((item) => !headingRegex.test(item))
-    // Don’t duplicate the summary inside the list if LLM echoed it
     .filter(
       (item) =>
         !summaryText ||
         item.trim().replace(/^[-•*]\s*/, '') !== summaryText.trim()
     )
-    .map((item) => item.replace(/^[-•*]\s*/, '').trim()); // strip leading "-" / "•"
+    .map((item) => item.replace(/^[-•*]\s*/, '').trim());
 
-  // Progress bar color based on match
   const barColor =
     matchPercent >= 75
       ? 'bg-emerald-500'
@@ -120,12 +129,12 @@ export default function SuggestionsPanel({ suggestions, loading }) {
       ? 'bg-amber-500'
       : 'bg-rose-500';
 
-  const hasMatched = Array.isArray(suggestions.matched_skills)
-    ? suggestions.matched_skills.length > 0
+  const hasMatched = Array.isArray(result.matched_skills)
+    ? result.matched_skills.length > 0
     : false;
 
-  const hasMissing = Array.isArray(suggestions.missing_skills)
-    ? suggestions.missing_skills.length > 0
+  const hasMissing = Array.isArray(result.missing_skills)
+    ? result.missing_skills.length > 0
     : false;
 
   // -----------------------------
@@ -134,17 +143,17 @@ export default function SuggestionsPanel({ suggestions, loading }) {
   return (
     <section className="mt-6">
       {/* Header */}
-      <header className="flex items-center gap-2 mb-3">
+      <header className="mb-3 flex items-center gap-2">
         <SparklesIcon className="h-5 w-5 text-indigo-500" />
         <h3 className="text-lg font-semibold text-slate-900">
           {MSG['suggestions']}
         </h3>
       </header>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm space-y-4">
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         {/* Match header + bar */}
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="mb-1 flex items-center justify-between">
             <div className="inline-flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-slate-600">
               <CheckCircleIcon className="h-4 w-4 text-emerald-500" />
               <span>Match</span>
@@ -153,31 +162,30 @@ export default function SuggestionsPanel({ suggestions, loading }) {
               {matchPercent}%
             </div>
           </div>
-          <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
             <div
               className={`h-full ${barColor} transition-all`}
               style={{ width: `${matchPercent}%` }}
             />
           </div>
 
-          {/* Matched / Missing skill pills */}
           {(hasMatched || hasMissing) && (
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               {hasMatched && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
+                <span className="inline-flex max-w-[220px] items-center gap-1 truncate rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700">
                   <CheckCircleIcon className="h-4 w-4" />
                   <span className="font-medium">Matched:</span>
-                  <span className="truncate max-w-[220px]">
-                    {suggestions.matched_skills.join(', ')}
+                  <span className="truncate">
+                    {result.matched_skills.join(', ')}
                   </span>
                 </span>
               )}
               {hasMissing && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
+                <span className="inline-flex max-w-[220px] items-center gap-1 truncate rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
                   <XCircleIcon className="h-4 w-4" />
                   <span className="font-medium">Missing:</span>
-                  <span className="truncate max-w-[220px]">
-                    {suggestions.missing_skills.join(', ')}
+                  <span className="truncate">
+                    {result.missing_skills.join(', ')}
                   </span>
                 </span>
               )}
@@ -188,10 +196,10 @@ export default function SuggestionsPanel({ suggestions, loading }) {
         {/* Summary */}
         {summaryText && (
           <div>
-            <h4 className="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-1">
+            <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Professional Summary
             </h4>
-            <p className="text-sm leading-relaxed text-slate-800 whitespace-pre-wrap">
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-800">
               {summaryText}
             </p>
           </div>
@@ -199,7 +207,7 @@ export default function SuggestionsPanel({ suggestions, loading }) {
 
         {/* Improvement Suggestions */}
         <div>
-          <h4 className="text-xs font-semibold tracking-wide text-slate-500 uppercase mb-2">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Improvement Suggestions
           </h4>
           {bullets.length > 0 ? (
@@ -222,9 +230,9 @@ export default function SuggestionsPanel({ suggestions, loading }) {
         </div>
 
         {/* Disclaimer */}
-        {suggestions.disclaimer && (
+        {result.disclaimer && (
           <p className="mt-1 text-[11px] text-slate-500">
-            {suggestions.disclaimer}
+            {result.disclaimer}
           </p>
         )}
       </div>
