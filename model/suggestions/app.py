@@ -27,8 +27,8 @@ class Analysis(BaseModel):
 
 
 class Style(BaseModel):
-    bullets: int = 7
-    max_words: int = 200
+    bullets: int = 5
+    max_words: int = 180
     tone: str = "professional"
 
 class SuggestIn(BaseModel):
@@ -64,6 +64,14 @@ PROMPT_SYS = (
 # =============================
 # PROMPT BUILDER 
 # =============================
+
+def _truncate_text(s: str, max_chars: int = 400) -> str:
+  # keep it simple; no need to be fancy
+  s = s.strip()
+  if len(s) <= max_chars:
+      return s
+  return s[: max_chars - 3].rstrip() + "..."
+
 def build_prompt(analysis: Analysis, style: Style, role_hint: str | None):
     # normalize match pct
     raw = analysis.matched_pct if analysis.matched_pct is not None else analysis.matches_pct
@@ -78,16 +86,36 @@ def build_prompt(analysis: Analysis, style: Style, role_hint: str | None):
     else:
         pct = "N/A"
 
-    # meta fields (optional)
     meta = analysis.meta or {}
     sem_sim = meta.get("semantic_similarity")
     kw_overlap = meta.get("keyword_overlap")
     overall_fit = meta.get("overall_fit_score")
 
-    # richer evidence
-    resume_snips = analysis.evidence.get("resume_snippets", [])
-    job_snips = analysis.evidence.get("job_snippets", [])
-    skill_snips = analysis.evidence.get("skill_snippets", {})
+    # ---- TRIM EVIDENCE HERE ----
+    evidence = analysis.evidence or {}
+    resume_snips_full = evidence.get("resume_snippets", []) or []
+    job_snips_full = evidence.get("job_snippets", []) or []
+    skill_snips_full = evidence.get("skill_snippets", {}) or {}
+
+    # only keep first few snippets & truncate each
+    resume_snips = [
+        _truncate_text(s, 350) for s in resume_snips_full[:4]
+    ]
+    job_snips = [
+        _truncate_text(s, 350) for s in job_snips_full[:3]
+    ]
+
+    # only keep first few skills with short evidence
+    limited_skill_snips = {}
+    for i, (skill, snips) in enumerate(skill_snips_full.items()):
+        if i >= 6:
+            break
+        if isinstance(snips, list):
+            limited_skill_snips[skill] = [
+                _truncate_text(s, 250) for s in snips[:2]
+            ]
+        else:
+            limited_skill_snips[skill] = _truncate_text(str(snips), 250)
 
     return f"""
 SYSTEM:
@@ -103,11 +131,11 @@ overall_fit_score: {overall_fit}
 semantic_similarity: {sem_sim}
 keyword_overlap: {kw_overlap}
 
-evidence.resume_snippets: {resume_snips}
-evidence.job_snippets: {job_snips}
+evidence.resume_snippets (truncated): {resume_snips}
+evidence.job_snippets (truncated): {job_snips}
 
-# Detailed per-skill evidence
-skill_snippets: {skill_snips}
+# Detailed per-skill evidence (truncated, limited)
+skill_snippets: {limited_skill_snips}
 
 role_hint: {role_hint or ''}
 
@@ -136,7 +164,7 @@ def call_ollama(prompt: str) -> str:
         resp = requests.post(
             f"{OLLAMA_HOST}/api/chat",
             json={"model": OLLAMA_MODEL, "messages": [{"role": "user", "content": prompt}], "stream": False},
-            timeout=180,
+            timeout=120,
         )
         resp.raise_for_status()
     except requests.RequestException as e:

@@ -68,6 +68,8 @@ app.post('/analyze', (req, res, next) => {
   req.url = '/analyze';
   api(req, res, next);
 });
+const suggestRouter = require('./routes/suggestions');
+app.use('/api', suggestRouter);
 
 app.use('/api-docs',swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
