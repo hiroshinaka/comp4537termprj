@@ -23,7 +23,7 @@ const postJsonWithTimeout = async (url, bodyObj, timeoutMs) => {
   }
 };
 
-router.post('/suggest', async (req, res) => {
+router.post('/suggestions', async (req, res) => {
   try {
     const suggestionsUrl = process.env.SUGGESTIONS_URL;
     if (!suggestionsUrl) {
