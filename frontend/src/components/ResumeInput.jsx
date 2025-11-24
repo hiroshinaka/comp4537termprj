@@ -58,7 +58,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
   }, []);
 
 
-  const analyzeUrl = API_BASE + '/api/analyze'
+  const analyzeUrl = API_BASE + '/api/analyzer'
 
   const suggestUrl = API_BASE + '/api/suggestions'
 
@@ -93,7 +93,7 @@ export default function ResumeInput({ onAnalyze, onLogout }) {
     return res.json();
   };
 
-  // Call /api/suggest with the analysis object
+  // Call /api/ suggestions with the analysis object
   const submitToSuggestions = async (analysisObj) => {
     const res = await fetch(suggestUrl, {
       method: 'POST',
