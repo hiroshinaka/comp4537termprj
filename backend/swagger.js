@@ -15,6 +15,15 @@ const options ={
                 description: 'Development server',
             },
         ],
+        components: {
+            securitySchemes: {
+                cookieAuth: {
+                    type: 'apiKey',
+                    in: 'cookie',
+                    name: 'token',
+                },
+            },
+        },
     },
     apis: ['./routes/*.js'], // Path to the API docs
 }

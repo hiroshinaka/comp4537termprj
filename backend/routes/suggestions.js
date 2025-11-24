@@ -22,7 +22,69 @@ const postJsonWithTimeout = async (url, bodyObj, timeoutMs) => {
     throw err;
   }
 };
-
+/**
+ * @swagger
+ * /api/suggestions:
+ *   post:
+ *     summary: Get suggestions for a resume analysis
+ *     description: Get suggestions for a resume analysis
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               analysis:
+ *                 type: object
+ *                 description: The analysis object returned from /api/analyze
+ *               style:
+ *                 type: object
+ *                 description: The style object to apply to the suggestions
+ *               role_hint:
+ *                 type: string
+ *                 description: The role hint to apply to the suggestions
+ *     responses:
+ *       200:
+ *         description: Suggestions for a resume analysis
+ *         content:
+ *           application/json:
+ */
+/**
+ * @swagger
+ * /api/suggestions/suggestions:
+ *   post:
+ *     summary: Generate suggestions from an analysis object
+ *     description: |
+ *       Accepts an `analysis` object (from the analyzer) and optional `style` and `role_hint` fields.
+ *       Forwards the analysis to the configured suggestions backend and returns generated suggestion bullets and metadata.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               analysis:
+ *                 type: object
+ *               style:
+ *                 type: object
+ *               role_hint:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Suggestions result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Missing analysis
+ *       502:
+ *         description: Suggestions backend failure
+ *       504:
+ *         description: Suggestions backend timed out
+ */
 router.post('/suggestions', async (req, res) => {
   try {
     const suggestionsUrl = process.env.SUGGESTIONS_URL;

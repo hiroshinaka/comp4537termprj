@@ -11,6 +11,54 @@ const upload = multer({
 });
 
 const ANALYZER_TIMEOUT = 30000;
+
+
+/**
+ * @swagger
+ * /api/analyzer/analyzer:
+ *   post:
+ *     summary: Analyze a resume and job description
+ *     description: |
+ *       Accepts a file upload (`multipart/form-data` with field `resume`) or JSON with `resume` text.
+ *       Returns the analyzer service response (skills, matched_pct, evidence, etc.).
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resume:
+ *                 type: string
+ *                 format: binary
+ *               job:
+ *                 type: string
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               resume:
+ *                 type: string
+ *               job:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Analysis result
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       400:
+ *         description: Missing resume
+ *       401:
+ *         description: Authentication required
+ *       502:
+ *         description: Upstream analyzer error
+ *       504:
+ *         description: Analyzer timed out
+ */
 router.post('/analyzer', upload.single('resume'), async (req, res) => {
   try {
     const jobText = req.body.job || req.body.jobText || '';

@@ -16,6 +16,36 @@ router.use(authenticateToken);
 router.use('/analyzer',trackUsage, analyzerRouter);
 router.use('/suggestions', trackUsage, suggestionsRouter);
 
+
+
+/**
+ * @swagger
+ * /api/me/usage:
+ *   get:
+ *     summary: Get authenticated user's API usage summary
+ *     description: Returns total requests for the authenticated user, free limit, and whether the user is over the free limit.
+ *     responses:
+ *       200:
+ *         description: Usage summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 usage:
+ *                   type: object
+ *                   properties:
+ *                     totalRequests:
+ *                       type: integer
+ *                     freeLimit:
+ *                       type: integer
+ *                     overFreeLimit:
+ *                       type: boolean
+ *       500:
+ *         description: Server error
+ */
 // ---------------------------------------------------------
 // Usage summary for current user
 // ---------------------------------------------------------
@@ -36,13 +66,36 @@ router.get('/me/usage', async (req, res) => {
   }
 });
 
+
+
 /**
  * @swagger
- * /api/me/usage:
+ * /api/admin/endpoint-stats:
  *   get:
- *     summary: Get authenticated user's API usage summary
+ *     summary: Get aggregated endpoint usage statistics
+ *     description: Returns aggregated counts per HTTP method and endpoint. Admin-only.
+ *     responses:
+ *       200:
+ *         description: Array of endpoint statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       method:
+ *                         type: string
+ *                       endpoint:
+ *                         type: string
+ *                       requests:
+ *                         type: integer
  */
-
 // ---------------------------------------------------------
 // Admin stats routes
 // ---------------------------------------------------------
@@ -56,6 +109,36 @@ router.get('/admin/endpoint-stats', adminAuthorization, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/user-stats:
+ *   get:
+ *     summary: Get per-user API consumption stats
+ *     description: Returns a list of users with their total API request counts. Admin-only.
+ *     responses:
+ *       200:
+ *         description: Array of user stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       user_id:
+ *                         type: integer
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       total_requests:
+ *                         type: integer
+ */
 router.get('/admin/user-stats', adminAuthorization, async (req, res) => {
   try {
     const rows = await db_users.getUserStats();
@@ -65,6 +148,37 @@ router.get('/admin/user-stats', adminAuthorization, async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to fetch user stats' });
   }
 });
+
+/**
+ * @swagger
+ * /api/admin/user-stats:
+ *   get:
+ *     summary: Get per-user API consumption stats
+ *     description: Returns a list of users with their total API request counts. Admin-only.
+ *     responses:
+ *       200:
+ *         description: Array of user stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       user_id:
+ *                         type: integer
+ *                       username:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                       total_requests:
+ *                         type: integer
+ */
 
 // ---------------------------------------------------------
 // NEW: Admin user management routes
@@ -92,6 +206,35 @@ router.get('/admin/users', adminAuthorization, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/users/{id}/role:
+ *   put:
+ *     summary: Update a user's role
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               role_id:
+ *                 type: integer
+ *     responses:
+ *       200:
+ *         description: Role updated
+ *       400:
+ *         description: Invalid role_id
+ *       404:
+ *         description: User not found
+ */
+
 // Update a user's role
 router.put('/admin/users/:id/role', adminAuthorization, async (req, res) => {
   try {
@@ -114,6 +257,24 @@ router.put('/admin/users/:id/role', adminAuthorization, async (req, res) => {
   }
 });
 
+/**
+ * @swagger
+ * /api/admin/users/{id}:
+ *   delete:
+ *     summary: Delete a user
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: User deleted
+ *       404:
+ *         description: User not found
+ */
+
 // Delete a user
 router.delete('/admin/users/:id', adminAuthorization, async (req, res) => {
   try {
@@ -130,6 +291,7 @@ router.delete('/admin/users/:id', adminAuthorization, async (req, res) => {
     res.status(500).json({ success: false, error: 'Failed to delete user' });
   }
 });
+
 
 // ---------------------------------------------------------
 
