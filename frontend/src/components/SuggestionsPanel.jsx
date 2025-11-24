@@ -112,8 +112,39 @@ export default function SuggestionsPanel({ suggestions, loading }) {
 
     // If we successfully parsed something useful, use it as the payload
     if (parsed.summary || parsed.suggestions.length > 0) {
+      // populate numeric metadata (matched_pct, fit_score) from summary text when present
+      try {
+        if (!parsed.matched_pct) {
+          const pctMatch = parsed.summary && parsed.summary.match(/matched (?:percentage )?of\s*([0-9]+(?:\.[0-9]+)?)\s*%/i);
+          if (pctMatch) parsed.matched_pct = parseFloat(pctMatch[1]);
+          else {
+            // fallback: look for any percent number in the summary near 'matched' or 'match'
+            const pctAny = parsed.summary && parsed.summary.match(/([0-9]+(?:\.[0-9]+)?)\s*%/);
+            if (pctAny) parsed.matched_pct = parseFloat(pctAny[1]);
+          }
+        }
+
+        if (!parsed.fit_score) {
+          const fitMatch = parsed.summary && parsed.summary.match(/fit score (?:of )?([0-9]+(?:\.[0-9]+)?)/i);
+          if (fitMatch) parsed.fit_score = Math.round(parseFloat(fitMatch[1]));
+        }
+
+        // try to extract matched_skills list if present (e.g. "matched skills in cloud, Python, and tools")
+        if (!parsed.matched_skills) {
+          const skillsMatch = parsed.summary && parsed.summary.match(/matched skills (?:in|include) ([\w\s,]+?)(?:\.|,| and |$)/i);
+          if (skillsMatch) {
+            const list = skillsMatch[1]
+              .split(/,| and /)
+              .map((s) => s.trim())
+              .filter(Boolean);
+            if (list.length) parsed.matched_skills = list;
+          }
+        }
+      } catch (e) {
+        /* ignore parsing errors */
+      }
+
       // replace payload with parsed object so downstream rendering handles it
-      // (we use the same `result` variable later)
       structured = parsed;
     } else {
       // fallback to raw print
