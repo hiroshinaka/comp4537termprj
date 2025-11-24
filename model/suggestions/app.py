@@ -162,7 +162,7 @@ Rules for suggestions:
 def call_ollama(prompt: str) -> str:
     try:
         resp = requests.post(
-            f"{OLLAMA_HOST}/api/chat",
+            f"{OLLAMA_HOST}/api/generate",
             json={"model": OLLAMA_MODEL, "messages": [{"role": "user", "content": prompt}], "stream": False},
             timeout=120,
         )
