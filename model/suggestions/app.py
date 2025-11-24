@@ -3,6 +3,8 @@ from pydantic import BaseModel
 from typing import List, Dict, Optional, Any
 import os
 import requests
+import threading
+import time
 
 
 # ---------- Ollama config ----------
@@ -10,6 +12,31 @@ OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://127.0.0.1:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 app = FastAPI()
+
+# =============================
+# Warm up the model on startup
+# =============================
+def warmup_model():
+    time.sleep(2)
+    print("[warmup] starting...")
+    try:
+        resp = requests.post(
+            f"{OLLAMA_HOST}/api/chat",
+            json={
+                "model": OLLAMA_MODEL,
+                "messages": [{"role": "user", "content": "warmup"}],
+                "stream": False,
+            },
+            timeout=45,
+        )
+        resp.raise_for_status()
+        print("[warmup] complete")
+    except Exception as e:
+        print("[warmup] failed:", e)
+
+
+# after you create `app = FastAPI()`
+threading.Thread(target=warmup_model, daemon=True).start()
 
 # =============================
 # MODELS
