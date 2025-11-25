@@ -57,10 +57,22 @@ export default function SuggestionsPanel({ suggestions, loading }) {
   // -----------------------------
   // Normalize shape: handle { success, suggestions } from API
   // -----------------------------
+  const inbound = suggestions;
   let structured =
-    suggestions && typeof suggestions === 'object' && 'suggestions' in suggestions
-      ? suggestions.suggestions
-      : suggestions;
+    inbound && typeof inbound === 'object' && 'suggestions' in inbound
+      ? inbound.suggestions
+      : inbound;
+
+  // If the prop contained an object wrapper with metadata alongside an array
+  // (e.g. { success: true, suggestions: [...], matched_pct: 63.64 }), prefer
+  // the wrapped object so numeric metadata (matched_pct, fit_score) is kept.
+  if (Array.isArray(structured) && inbound && typeof inbound === 'object') {
+    const metaKeys = ['matched_pct', 'match_pct', 'fit_score', 'summary', 'matched_skills', 'missing_skills'];
+    const hasMeta = metaKeys.some((k) => Object.prototype.hasOwnProperty.call(inbound, k));
+    if (hasMeta) {
+      structured = inbound;
+    }
+  }
 
   // If backend returns a plain string, pretty-print it.
   if (typeof structured === 'string') {
