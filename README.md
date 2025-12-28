@@ -8,7 +8,7 @@ Live demo: `https://comp4537termprj.vercel.app` :contentReference[oaicite:0]{ind
 
 ## What’s in this repo
 
-This repository is organized into three main parts: `frontend/`, `backend/`, and `model/`. :contentReference[oaicite:1]{index=1}
+This repository is organized into three main parts: `frontend/`, `backend/`, and `model/`. 
 
 - **frontend/** — UI for uploading resumes and viewing results
 - **backend/** — API gateway / server that validates requests and coordinates services
