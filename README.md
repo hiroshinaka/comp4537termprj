@@ -2,7 +2,7 @@
 
 A full-stack, microservice-based web app that analyzes an uploaded resume, extracts structured insights (skills/keywords), and generates AI-driven improvement suggestions.
 
-Live demo: `https://comp4537termprj.vercel.app` :contentReference
+Live demo: `https://comp4537termprj.vercel.app` 
 
 ---
 
@@ -14,7 +14,7 @@ This repository is organized into three main parts: `frontend/`, `backend/`, and
 - **backend/** — API gateway / server that validates requests and coordinates services
 - **model/** — ML/NLP service(s) for extracting structured resume data
 
-(Repo languages include JavaScript, Python, and HTML.) :contentReference[oaicite:2]{index=2}
+(Repo languages include JavaScript, Python, and HTML.) 
 
 ---
 
