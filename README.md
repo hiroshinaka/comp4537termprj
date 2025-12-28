@@ -2,7 +2,7 @@
 
 A full-stack, microservice-based web app that analyzes an uploaded resume, extracts structured insights (skills/keywords), and generates AI-driven improvement suggestions.
 
-Live demo: `https://comp4537termprj.vercel.app` :contentReference[oaicite:0]{index=0}
+Live demo: `https://comp4537termprj.vercel.app` :contentReference
 
 ---
 
